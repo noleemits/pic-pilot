@@ -11,7 +11,9 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use PicPilot\Admin\MediaLibrary;
 
+\PicPilot\Admin\SettingsPage::init();
 \PicPilot\Admin\BulkOptimize::init();
+
 
 
 define('PIC_PILOT_VERSION', '0.1.0');

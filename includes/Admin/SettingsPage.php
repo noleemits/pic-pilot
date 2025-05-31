@@ -25,7 +25,7 @@ class SettingsPage {
         add_menu_page(
             __('Pic Pilot Settings', 'pic-pilot'),
             'Pic Pilot',
-            'read',
+            'manage_options', // Only allow admins
             'pic-pilot',
             [self::class, 'render_settings_page'],
             'dashicons-format-image',

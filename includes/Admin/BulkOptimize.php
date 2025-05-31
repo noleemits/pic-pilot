@@ -6,14 +6,8 @@ use PicPilot\Utils;
 use PicPilot\Settings;
 use PicPilot\Optimizer;
 
-
-
 class BulkOptimize {
-
-
     public static function init() {
-        error_log('📦 BulkOptimize::init() was called!');
-
         add_action('admin_menu', [self::class, 'add_menu']);
     }
 
@@ -22,18 +16,16 @@ class BulkOptimize {
             'pic-pilot',
             __('Bulk Optimize', 'pic-pilot'),
             __('Bulk Optimize', 'pic-pilot'),
-            'read',
+            'manage_options', // Only allow admins
             'pic-pilot-bulk', // this is your key!
             [self::class, 'render_page']
         );
     }
 
     public static function render_page() {
-        echo '<h1>✅ Entered BulkOptimize::render_page()</h1>';
-        echo '<pre>';
-        print_r(wp_get_current_user());
-        echo '</pre>';
-        die('🛑 Stopped after basic debug. If you see this, the method is running.');
+        if (!current_user_can('read')) {
+            wp_die(__('You do not have permission to access this page.', 'pic-pilot'));
+        }
 ?>
         <div class="wrap">
             <h1><?php esc_html_e('Bulk Image Optimization', 'pic-pilot'); ?></h1>
