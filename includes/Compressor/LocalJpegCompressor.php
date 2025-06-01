@@ -6,69 +6,45 @@ use PicPilot\Logger;
 use PicPilot\Settings;
 
 class LocalJpegCompressor implements CompressorInterface {
-    public function compress($file_path): bool {
+    public function compress($file_path): array {
+        $settings = \PicPilot\Settings::get();
+        $quality = min(max((int) ($settings['jpeg_quality'] ?? 80), 10), 100);
+
         if (!file_exists($file_path)) {
-            Logger::log("❌ File not found: $file_path");
-            return false;
+            \PicPilot\Logger::log("❌ File does not exist: $file_path");
+            return ['success' => false, 'original' => 0, 'optimized' => 0, 'saved' => 0];
         }
 
-        $mime = mime_content_type($file_path);
-        if ($mime !== 'image/jpeg') {
-            Logger::log("⛔ Skipping non-JPEG file: $file_path");
-            return false;
+        try {
+            $original_size = filesize($file_path);
+
+            $image = new \Imagick($file_path);
+            $image->setImageCompression(\Imagick::COMPRESSION_JPEG);
+            $image->setImageCompressionQuality($quality);
+            $image->stripImage();
+            $image->writeImage($file_path);
+            $image->clear();
+            clearstatcache(true, $file_path); // ⚠️ very important
+
+            $optimized_size = filesize($file_path);
+            $saved = max($original_size - $optimized_size, 0);
+
+            \PicPilot\Logger::log("📉 JPEG optimized (q=$quality): $original_size → $optimized_size bytes (Saved: $saved)");
+
+            return [
+                'success' => true,
+                'original' => $original_size,
+                'optimized' => $optimized_size,
+                'saved' => $saved
+            ];
+        } catch (\Exception $e) {
+            \PicPilot\Logger::log("❌ Imagick compression failed: " . $e->getMessage());
+            return [
+                'success' => false,
+                'original' => 0,
+                'optimized' => 0,
+                'saved' => 0
+            ];
         }
-
-        $quality = (int) Settings::get('jpeg_quality');
-        $original_size = filesize($file_path);
-
-        // Try Imagick
-        if (extension_loaded('imagick')) {
-            try {
-                $image = new \Imagick($file_path);
-                $image->setImageCompression(\Imagick::COMPRESSION_JPEG);
-                $image->setImageCompressionQuality($quality);
-                $image->stripImage(); // Remove EXIF, comments, etc.
-                $image->writeImage($file_path);
-                $image->destroy();
-
-                $new_size = filesize($file_path);
-                if ($new_size > $original_size) {
-                    Logger::log("📈 Compressed file is larger. Skipping overwrite: $file_path");
-                    return false;
-                }
-
-                Logger::log("✅ Compressed JPEG using Imagick: $file_path");
-                return true;
-            } catch (\Exception $e) {
-                Logger::log("⚠️ Imagick failed: {$e->getMessage()}. Falling back to GD.");
-            }
-        }
-
-        // Try GD fallback
-        if (function_exists('imagecreatefromjpeg')) {
-            $image = @imagecreatefromjpeg($file_path);
-            if (!$image) {
-                Logger::log("❌ GD failed to load image: $file_path");
-                return false;
-            }
-
-            // Save to temp path to test size
-            $tmp_path = $file_path . '.tmp';
-            imagejpeg($image, $tmp_path, $quality);
-            imagedestroy($image);
-
-            if (filesize($tmp_path) >= $original_size) {
-                unlink($tmp_path);
-                Logger::log("📈 GD result is larger. Skipping overwrite: $file_path");
-                return false;
-            }
-
-            rename($tmp_path, $file_path);
-            Logger::log("✅ Compressed JPEG using GD: $file_path");
-            return true;
-        }
-
-        Logger::log("❌ No compression library available for: $file_path");
-        return false;
     }
 }

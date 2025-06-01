@@ -5,6 +5,7 @@ namespace PicPilot\Admin;
 use PicPilot\Logger;
 use PicPilot\Settings;
 use PicPilot\Compressor\LocalJpegCompressor;
+use PicPilot\Compressor\External\TinyPngCompressor;
 
 class MediaLibrary {
     public static function init() {
@@ -67,22 +68,68 @@ Register new column
     /**
      * Performs optimization on a single attachment file via AJAX.
      */
-    public static function handle_optimize_now_ajax($attachment_id) {
+
+    public static function handle_optimize_now_ajax(int $attachment_id): array {
+        Logger::log("🧪 Optimizing attachment ID $attachment_id");
+
         $file_path = get_attached_file($attachment_id);
-
         if (!$file_path || !file_exists($file_path)) {
-            Logger::log("❌ Attachment not found: ID $attachment_id");
-            return false;
+            Logger::log("❌ File not found for Optimize Now: ID $attachment_id");
+            return ['success' => false, 'saved' => 0];
         }
 
-        $result = \PicPilot\Optimizer::optimize_attachment($attachment_id);
+        $mime = mime_content_type($file_path);
+        Logger::log("🧪 File path: $file_path");
+        Logger::log("🧪 MIME type: $mime");
 
-        if ($result['success']) {
-            return $result['saved'] ?? 0;
+        $settings = Settings::get();
+        $compressor = null;
+
+        if (strpos($mime, 'png') !== false && !empty($settings['enable_tinypng']) && !empty($settings['tinypng_api_key'])) {
+            Logger::log("📌 Routing PNG to TinyPNG: $file_path");
+            $compressor = new TinyPngCompressor();
+        } elseif (strpos($mime, 'jpeg') !== false || strpos($mime, 'jpg') !== false) {
+            Logger::log("📌 Routing JPEG to local compressor: $file_path");
+            $compressor = new LocalJpegCompressor();
+        } else {
+            Logger::log("⚠️ Unsupported MIME type: $mime");
+            return ['success' => false, 'saved' => 0];
         }
 
-        return 0;
+        $result = $compressor->compress($file_path);
+
+        // Optional: compress unscaled original
+        $original_path = preg_replace('/-scaled\.(jpe?g)$/i', '.$1', $file_path);
+        if ($original_path !== $file_path && file_exists($original_path)) {
+            $original_result = $compressor->compress($original_path);
+            $result['saved'] += $original_result['saved'] ?? 0;
+            Logger::log("🖼️ Unscaled original also optimized: $original_path");
+        }
+
+        // Compress thumbnails
+        $meta = wp_get_attachment_metadata($attachment_id);
+        if (!empty($meta['sizes']) && is_array($meta['sizes'])) {
+            foreach ($meta['sizes'] as $size => $info) {
+                $thumb_path = path_join(dirname($file_path), $info['file']);
+                if (file_exists($thumb_path)) {
+                    $thumb_result = $compressor->compress($thumb_path);
+                    $result['saved'] += $thumb_result['saved'] ?? 0;
+                }
+            }
+        }
+
+        // Save status
+        update_post_meta($attachment_id, '_picpilot_optimized', 1);
+        update_post_meta($attachment_id, '_picpilot_saved', $result['saved']);
+
+        return [
+            'success' => $result['success'],
+            'saved' => $result['saved']
+        ];
     }
+
+
+
     //Admin notices
     public static function maybe_show_optimization_notice() {
         if (!isset($_GET['optimized'])) return;

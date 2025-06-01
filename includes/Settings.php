@@ -10,11 +10,10 @@ class Settings {
         'auto_optimize_uploads' => false,
     ];
 
-    public static function get($key) {
-        $all = get_option('pic_pilot_options', []);
-        $merged = wp_parse_args($all, self::$defaults);
-        return $merged[$key] ?? null;
+    public static function get(): array {
+        return get_option('pic_pilot_options', []);
     }
+
 
     public static function all() {
         return wp_parse_args(get_option('pic_pilot_options', []), self::$defaults);

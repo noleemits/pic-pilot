@@ -38,23 +38,9 @@ add_action('wp_ajax_pic_pilot_optimize', function () {
         wp_die(__('Invalid nonce', 'pic-pilot'));
     }
 
-    $saved = \PicPilot\Admin\MediaLibrary::handle_optimize_now_ajax($attachment_id);
+    $result = \PicPilot\Admin\MediaLibrary::handle_optimize_now_ajax($attachment_id);
 
-    wp_redirect(admin_url('upload.php?optimized=' . ($saved ? '1' : '0') . '&saved=' . (int) $saved));
-
+    // Return to media screen with success/failure
+    wp_redirect(admin_url('upload.php?optimized=' . ($result['success'] ? '1' : '0') . '&saved=' . (int) $result['saved']));
     exit;
-});
-
-
-add_action('admin_menu', function () {
-    add_submenu_page(
-        'pic-pilot',
-        'Bulk Test',
-        'Bulk Test',
-        'read',
-        'bulk-test',
-        function () {
-            echo '<h1>It works!</h1>';
-        }
-    );
 });

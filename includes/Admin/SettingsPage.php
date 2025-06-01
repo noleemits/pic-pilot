@@ -6,6 +6,7 @@ class SettingsPage {
     public static function init() {
         add_action('admin_menu', [self::class, 'register_menu']);
         add_action('admin_enqueue_scripts', [self::class, 'enqueue_admin_assets']);
+        add_action('admin_init', [self::class, 'register_settings']);
     }
     public static function enqueue_admin_assets($hook) {
         // Load only on Media Library and Pic Pilot admin pages
@@ -49,7 +50,7 @@ class SettingsPage {
             <h1><?php esc_html_e('Pic Pilot Settings', 'pic-pilot'); ?></h1>
             <form method="post" action="options.php">
                 <?php
-                settings_fields('pic_pilot_settings');
+                settings_fields('pic_pilot_settings_group');
                 do_settings_sections('pic-pilot');
                 submit_button();
                 ?>
@@ -63,7 +64,7 @@ class SettingsPage {
     //Register settings and fields
 
     public static function register_settings() {
-        register_setting('pic_pilot_settings', 'pic_pilot_options');
+        register_setting('pic_pilot_settings_group', 'pic_pilot_options');
 
         add_settings_section(
             'pic_pilot_main',
@@ -106,7 +107,52 @@ class SettingsPage {
             'pic_pilot_main',
             ['label_for' => 'auto_optimize_uploads']
         );
+        add_settings_section(
+            'pic_pilot_tinypng',
+            __('TinyPNG Integration', 'pic-pilot'),
+
+            function () {
+                echo '<p>' . esc_html__('Compress PNGs using the TinyPNG API. Recommended for best results.', 'pic-pilot') . '</p>';
+                echo '<p><strong>' . esc_html__('Note:', 'pic-pilot') . '</strong> ' .
+                    esc_html__('Free TinyPNG accounts are limited to 500 images per month and 5MB per image.', 'pic-pilot') .
+                    '</p>';
+            },
+            'pic-pilot'
+        );
+
+        add_settings_field(
+            'enable_tinypng',
+            __('Enable TinyPNG for PNG compression', 'pic-pilot'),
+            [self::class, 'render_checkbox'],
+            'pic-pilot',
+            'pic_pilot_tinypng',
+            ['label_for' => 'enable_tinypng']
+        );
+
+        add_settings_field(
+            'tinypng_api_key',
+            __('TinyPNG API Key', 'pic-pilot'),
+            [self::class, 'render_text_input'],
+            'pic-pilot',
+            'pic_pilot_tinypng',
+            ['label_for' => 'tinypng_api_key']
+        );
+
+        add_settings_field(
+            'use_tinypng_for_jpeg',
+            __('Use TinyPNG for JPEGs too?', 'pic-pilot'),
+            [self::class, 'render_checkbox'],
+            'pic-pilot',
+            'pic_pilot_tinypng',
+            ['label_for' => 'use_tinypng_for_jpeg']
+        );
     }
+    public static function render_text_input($args) {
+        $options = get_option('pic_pilot_options', []);
+        $value = esc_attr($options[$args['label_for']] ?? '');
+        echo "<input type='text' id='{$args['label_for']}' name='pic_pilot_options[{$args['label_for']}]' value='$value' class='regular-text' />";
+    }
+
     //render server capabilities
     public static function render_server_capabilities() {
         $cap = \PicPilot\Settings::get_capabilities();
