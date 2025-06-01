@@ -2,7 +2,7 @@
 
 namespace PicPilot;
 
-use PicPilot\Compressor\LocalJpegCompressor;
+use PicPilot\Compressor\Local\LocalJpegCompressor;
 use PicPilot\Logger;
 
 class Optimizer {

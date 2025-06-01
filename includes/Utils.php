@@ -11,16 +11,30 @@ class Utils {
      */
     public static function is_compressible($attachment_id): bool {
         $file_path = get_attached_file($attachment_id);
-
-        if (!$file_path || !file_exists($file_path)) {
-            return false;
-        }
+        if (!$file_path || !file_exists($file_path)) return false;
 
         $mime = mime_content_type($file_path);
+        $settings = \PicPilot\Settings::get();
 
-        // Only allow JPEG for now. PNG and WebP handled in future.
-        return in_array($mime, ['image/jpeg', 'image/jpg']);
+        // JPEGs are always compressible locally
+        if (strpos($mime, 'jpeg') !== false || strpos($mime, 'jpg') !== false) {
+            return true;
+        }
+
+        // PNGs are compressible if TinyPNG is active
+        if (
+            strpos($mime, 'png') !== false &&
+            !empty($settings['enable_tinypng']) &&
+            !empty($settings['tinypng_api_key'])
+        ) {
+            return true;
+        }
+
+        return false;
     }
+
+
+
 
     /**
      * Get the file extension from a MIME type.

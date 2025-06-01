@@ -4,8 +4,9 @@ namespace PicPilot\Admin;
 
 use PicPilot\Logger;
 use PicPilot\Settings;
-use PicPilot\Compressor\LocalJpegCompressor;
-use PicPilot\Compressor\External\TinyPngCompressor;
+use PicPilot\Compressor\Local\LocalJpegCompressor;
+
+use PicPilot\Compressor\EngineRouter;
 
 class MediaLibrary {
     public static function init() {
@@ -27,7 +28,7 @@ Register new column
         if ($column_name !== 'pic_pilot_status') return;
 
         if (!\PicPilot\Utils::is_compressible($post_id)) {
-            echo '<span style="color:gray;">' . esc_html__('Not eligible', 'pic-pilot') . '</span>';
+            echo '<span class="pic-pilot-status pic-pilot-not-eligible">' . esc_html__('Not eligible', 'pic-pilot') . '</span>';
             return;
         }
 
@@ -37,32 +38,30 @@ Register new column
 
         switch ($status) {
             case 'optimized':
-                echo '<span class="pic-pilot-status pic-pilot-success">✅ ' . esc_html__('Optimized', 'pic-pilot') . '</span>';
+                echo '<span class="pic-pilot-status pic-pilot-success">✅ ' . esc_html__('Optimized', 'pic-pilot') . '</span><br>';
                 echo '<span class="pic-pilot-saved">' . esc_html(size_format($saved)) . ' ' . esc_html__('saved', 'pic-pilot') . '</span>';
-
                 break;
 
             case 'backup_only':
-                echo '<span style="color:orange;">💾 ' . esc_html__('Backed up, not compressed', 'pic-pilot') . '</span>';
+                echo '<span class="pic-pilot-status pic-pilot-warning">💾 ' . esc_html__('Backed up, not compressed', 'pic-pilot') . '</span>';
                 break;
 
             case 'pending_api':
-                echo '<span style="color:blue;">⏳ ' . esc_html__('Waiting for API compression', 'pic-pilot') . '</span>';
+                echo '<span class="pic-pilot-status pic-pilot-info">⏳ ' . esc_html__('Waiting for API compression', 'pic-pilot') . '</span>';
                 break;
 
             case 'failed':
                 echo '<span class="pic-pilot-status pic-pilot-error">⛔ ' . esc_html__('Optimization failed', 'pic-pilot') . '</span>';
-
                 break;
 
             default:
-                // Not yet optimized — show Optimize Now button
                 $nonce = wp_create_nonce('pic_pilot_optimize_' . $post_id);
                 $url = admin_url('admin-ajax.php?action=pic_pilot_optimize&attachment_id=' . $post_id . '&_wpnonce=' . $nonce);
-                echo '<a class="button" style="margin-top:3px;" href="' . esc_url($url) . '">' . esc_html__('Optimize Now', 'pic-pilot') . '</a>';
+                echo '<a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Optimize Now', 'pic-pilot') . '</a>';
                 break;
         }
     }
+
 
 
     /**
@@ -85,16 +84,16 @@ Register new column
         $settings = Settings::get();
         $compressor = null;
 
-        if (strpos($mime, 'png') !== false && !empty($settings['enable_tinypng']) && !empty($settings['tinypng_api_key'])) {
-            Logger::log("📌 Routing PNG to TinyPNG: $file_path");
-            $compressor = new TinyPngCompressor();
-        } elseif (strpos($mime, 'jpeg') !== false || strpos($mime, 'jpg') !== false) {
-            Logger::log("📌 Routing JPEG to local compressor: $file_path");
-            $compressor = new LocalJpegCompressor();
-        } else {
-            Logger::log("⚠️ Unsupported MIME type: $mime");
+        $mime = mime_content_type($file_path);
+
+        try {
+            $compressor = EngineRouter::get_compressor($mime);
+            Logger::log("📌 Routing $mime to compressor: " . get_class($compressor));
+        } catch (\Exception $e) {
+            Logger::log("⚠️ Unsupported MIME type or no valid compressor: $mime — " . $e->getMessage());
             return ['success' => false, 'saved' => 0];
         }
+
 
         $result = $compressor->compress($file_path);
 
@@ -118,9 +117,19 @@ Register new column
             }
         }
 
-        // Save status
-        update_post_meta($attachment_id, '_picpilot_optimized', 1);
-        update_post_meta($attachment_id, '_picpilot_saved', $result['saved']);
+        // Save status for Media Library column
+        if (!empty($result['success'])) {
+            update_post_meta($attachment_id, '_pic_pilot_optimization', [
+                'status' => 'optimized',
+                'saved' => $result['saved']
+            ]);
+        } else {
+            update_post_meta($attachment_id, '_pic_pilot_optimization', [
+                'status' => 'failed',
+                'saved' => 0
+            ]);
+        }
+
 
         return [
             'success' => $result['success'],

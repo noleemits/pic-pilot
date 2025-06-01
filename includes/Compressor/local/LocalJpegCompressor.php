@@ -1,7 +1,8 @@
 <?php
 
-namespace PicPilot\Compressor;
+namespace PicPilot\Compressor\Local;
 
+use PicPilot\Compressor\CompressorInterface;
 use PicPilot\Logger;
 use PicPilot\Settings;
 
