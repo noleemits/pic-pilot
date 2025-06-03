@@ -8,6 +8,7 @@ class PngCompressorPlaceholder implements CompressorInterface {
 
         return [
             'success' => false,
+            'error' => 'No PNG compression engine is configured. Please check your settings.',
             'original' => file_exists($file_path) ? filesize($file_path) : 0,
             'optimized' => 0,
             'saved' => 0

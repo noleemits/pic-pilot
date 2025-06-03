@@ -25,22 +25,43 @@ add_action('plugins_loaded', function () {
     add_action('admin_init', ['\PicPilot\Admin\SettingsPage', 'register_settings']);
 });
 
-// Register the AJAX endpoint (still needs to live in global scope)
+
+// Register the AJAX endpoint
 add_action('wp_ajax_pic_pilot_optimize', function () {
     $attachment_id = (int) ($_GET['attachment_id'] ?? 0);
     $nonce = $_GET['_wpnonce'] ?? '';
 
+    // Check user permissions
     if (!current_user_can('manage_options')) {
         wp_die(__('Unauthorized', 'pic-pilot'));
     }
 
+    // Verify nonce for security
     if (!wp_verify_nonce($nonce, 'pic_pilot_optimize_' . $attachment_id)) {
         wp_die(__('Invalid nonce', 'pic-pilot'));
     }
 
+    // Call the optimization handler
     $result = \PicPilot\Admin\MediaLibrary::handle_optimize_now_ajax($attachment_id);
 
-    // Return to media screen with success/failure
+    // Save the error message in the metadata if optimization failed
+    if (!$result['success']) {
+        // Here we can save a more detailed error message if available
+        $error_message = $result['error'] ?? __('Unknown error occurred during optimization.', 'pic-pilot');
+        update_post_meta($attachment_id, '_pic_pilot_optimization', [
+            'status' => 'failed',
+            'saved' => 0,
+            'error' => $error_message // Save the error message
+        ]);
+    } else {
+        // Save success status
+        update_post_meta($attachment_id, '_pic_pilot_optimization', [
+            'status' => 'optimized',
+            'saved' => $result['saved']
+        ]);
+    }
+
+    // Redirect back to the Media Library with success/failure status
     wp_redirect(admin_url('upload.php?optimized=' . ($result['success'] ? '1' : '0') . '&saved=' . (int) $result['saved']));
     exit;
 });

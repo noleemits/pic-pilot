@@ -51,8 +51,25 @@ Register new column
                 break;
 
             case 'failed':
-                echo '<span class="pic-pilot-status pic-pilot-error">⛔ ' . esc_html__('Optimization failed', 'pic-pilot') . '</span>';
+                // Retrieve metadata for the attachment
+                $meta = get_post_meta($post_id, '_pic_pilot_optimization', true);
+
+                // Get the error message from metadata or use a default message
+                $error_message = $meta['error'] ?? esc_html__('Optimization failed', 'pic-pilot');
+
+                // Generate a nonce for the retry action
+                $nonce = wp_create_nonce('pic_pilot_optimize_' . $post_id);
+
+                // Generate the retry URL for the AJAX request
+                $retry_url = admin_url('admin-ajax.php?action=pic_pilot_optimize&attachment_id=' . $post_id . '&_wpnonce=' . $nonce);
+
+                // Display the error message and the retry button
+                echo '<span class="pic-pilot-status pic-pilot-error">❌ ' . esc_html($error_message) . '</span><br>';
+                echo '<a class="button button-small" href="' . esc_url($retry_url) . '">' . esc_html__('Retry', 'pic-pilot') . '</a>';
                 break;
+
+
+
 
             default:
                 $nonce = wp_create_nonce('pic_pilot_optimize_' . $post_id);
@@ -82,18 +99,20 @@ Register new column
         Logger::log("🧪 MIME type: $mime");
 
         $settings = Settings::get();
-        $compressor = null;
 
         $mime = mime_content_type($file_path);
+        Logger::log("🧪 File path: $file_path");
+        Logger::log("🧪 MIME type: $mime");
+
+        $compressor = null;
 
         try {
             $compressor = EngineRouter::get_compressor($mime);
-            Logger::log("📌 Routing $mime to compressor: " . get_class($compressor));
+            Logger::log("🔌 Routing $mime to compressor: " . get_class($compressor));
         } catch (\Exception $e) {
-            Logger::log("⚠️ Unsupported MIME type or no valid compressor: $mime — " . $e->getMessage());
-            return ['success' => false, 'saved' => 0];
+            Logger::log("❌ Unsupported MIME type or no valid compressor: $mime — " . $e->getMessage());
+            return ['success' => false, 'saved' => 0, 'error' => __('Unsupported MIME type or no valid compressor.', 'pic-pilot')];
         }
-
 
         $result = $compressor->compress($file_path);
 
@@ -118,7 +137,7 @@ Register new column
         }
 
         // Save status for Media Library column
-        if (!empty($result['success'])) {
+        if ($result['success']) {
             update_post_meta($attachment_id, '_pic_pilot_optimization', [
                 'status' => 'optimized',
                 'saved' => $result['saved']
@@ -126,14 +145,15 @@ Register new column
         } else {
             update_post_meta($attachment_id, '_pic_pilot_optimization', [
                 'status' => 'failed',
-                'saved' => 0
+                'saved' => 0,
+                'error' => $result['error'] ?? __('Unknown error occurred during optimization.', 'pic-pilot')
             ]);
         }
 
-
         return [
             'success' => $result['success'],
-            'saved' => $result['saved']
+            'saved' => $result['saved'],
+            'error' => $result['error'] ?? '' // Include error message in the response
         ];
     }
 

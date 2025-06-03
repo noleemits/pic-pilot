@@ -11,21 +11,39 @@ class TinyPngCompressor implements CompressorInterface {
         $settings = Settings::get();
         $api_key = $settings['tinypng_api_key'] ?? '';
 
+        $original_size = filesize($file_path);
+        // Check if the file size exceeds the 5MB limit
+        if ($original_size > 5 * 1024 * 1024) {
+            Logger::log("⚠️ Skipping file (over 5MB TinyPNG limit): $file_path");
+            return $this->fail(
+                $file_path,
+                $original_size,
+                __('The image exceeds the 5MB limit for TinyPNG. Please reduce the file size or upgrade to a paid TinyPNG plan.', 'pic-pilot')
+            );
+        }
+
         if (empty($api_key)) {
             Logger::log("❌ TinyPNG API key missing.");
-            return $this->fail($file_path);
+            return $this->fail(
+                $file_path,
+                $original_size,
+                __('TinyPNG API key is missing. Please configure it in the settings.', 'pic-pilot')
+            );
         }
+
+
 
         if (!file_exists($file_path) || !is_readable($file_path)) {
             Logger::log("❌ File not found or unreadable: $file_path");
-            return $this->fail($file_path);
+            return $this->fail(
+                $file_path,
+                $original_size,
+                __('The file could not be found or is not readable.', 'pic-pilot')
+            );
         }
 
-        $original_size = filesize($file_path);
-        if ($original_size > 5 * 1024 * 1024) {
-            Logger::log("⚠️ Skipping file (over 5MB TinyPNG limit): $file_path");
-            return $this->fail($file_path, $original_size);
-        }
+
+
 
         $filename = basename($file_path);
         Logger::log("📤 Sending $filename to TinyPNG...");
@@ -48,12 +66,19 @@ class TinyPngCompressor implements CompressorInterface {
         Logger::log("🔍 TinyPNG response headers:\n" . trim($headers));
 
         // Parse Location header safely
+        // Parse Location header safely
         if (!preg_match('/location:\s*(https:\/\/api\.tinify\.com\/output\/[^\r\n]+)/i', $headers, $matches)) {
             Logger::log("❌ TinyPNG: Location header missing or malformed. HTTP $status\nHeaders:\n$headers");
-            return $this->fail($file_path, $original_size);
+            return $this->fail(
+                $file_path,
+                $original_size,
+                __('TinyPNG compression failed: Location header missing or malformed.', 'pic-pilot')
+            );
         }
+
         $compressed_url = trim($matches[1]);
-        Logger::log("📥 Download URL: $compressed_url"); // ✅ NEW LINE
+        Logger::log("📥 Download URL: $compressed_url");
+
         $download = curl_init();
         curl_setopt_array($download, [
             CURLOPT_URL => $compressed_url,
@@ -72,9 +97,14 @@ class TinyPngCompressor implements CompressorInterface {
         curl_close($download);
 
         if ($http_code !== 200 || !$compressed) {
-            Logger::log("❌ Failed to download optimized image. HTTP $http_code. cURL error: $curl_error");
+            $error_message = sprintf(
+                __('Failed to download optimized image. HTTP %d. cURL error: %s', 'pic-pilot'),
+                $http_code,
+                $curl_error
+            );
+            Logger::log("❌ " . $error_message);
             Logger::log("🔁 Download URL was: $compressed_url");
-            return $this->fail($file_path, $original_size);
+            return $this->fail($file_path, $original_size, $error_message);
         }
 
 
@@ -99,7 +129,8 @@ class TinyPngCompressor implements CompressorInterface {
         ];
     }
 
-    private function fail(string $file_path, int $original_size = 0): array {
+
+    private function fail(string $file_path, int $original_size = 0, string $custom_error = ''): array {
         if ($original_size <= 0 && file_exists($file_path)) {
             $original_size = filesize($file_path);
         }
@@ -108,7 +139,8 @@ class TinyPngCompressor implements CompressorInterface {
             'success' => false,
             'original' => $original_size,
             'optimized' => $original_size,
-            'saved' => 0
+            'saved' => 0,
+            'error' => $custom_error // Include custom error message
         ];
     }
 }
