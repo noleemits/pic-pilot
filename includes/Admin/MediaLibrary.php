@@ -86,6 +86,9 @@ Register new column
      */
 
     public static function handle_optimize_now_ajax(int $attachment_id): array {
+        if (\PicPilot\Settings::is_backup_enabled()) {
+            \PicPilot\Backup\BackupService::create_backup($attachment_id);
+        }
         Logger::log("🧪 Optimizing attachment ID $attachment_id");
 
         $file_path = get_attached_file($attachment_id);

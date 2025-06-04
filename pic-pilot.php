@@ -71,3 +71,10 @@ add_action('wp_ajax_pic_pilot_optimize', function () {
     wp_redirect(admin_url('upload.php?optimized=' . ($result['success'] ? '1' : '0') . '&saved=' . (int) $result['saved']));
     exit;
 });
+
+//This will delete the backup file and its metadata automatically whenever an attachment (Media Library image) is deleted.
+add_action('delete_attachment', function ($attachment_id) {
+    if (class_exists('\\PicPilot\\Backup\\BackupService')) {
+        \PicPilot\Backup\BackupService::delete_backup($attachment_id);
+    }
+});

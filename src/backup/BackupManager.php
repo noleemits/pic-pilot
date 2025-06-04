@@ -2,14 +2,40 @@
 
 namespace PicPilot\Backup;
 
+if (! defined('ABSPATH')) exit;
+
+use PicPilot\Logger;
+
 class BackupManager {
     public static function init() {
+        add_action('admin_post_pic_pilot_restore_backup', [self::class, 'handle_restore_backup']);
+        add_action('admin_post_pic_pilot_delete_backup', [self::class, 'handle_delete_backup']);
     }
     const PER_PAGE = 20;
 
     public static function render_backup_page() {
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Pic Pilot Backups', 'pic-pilot') . '</h1>';
+        echo '<div class="notice notice-info" style="margin-bottom:15px;"><p>'
+            . esc_html__('Note: Backups are tied to their Media Library images. If you delete an image from the Media Library, its backup will be deleted as well.', 'pic-pilot')
+            . '</p></div>';
+
+
+        // Display notices for restore/delete
+        if (isset($_GET['restored'])) {
+            if ($_GET['restored']) {
+                echo '<div class="notice notice-success"><p>' . esc_html__('Backup restored successfully!', 'pic-pilot') . '</p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p>' . esc_html__('Failed to restore backup.', 'pic-pilot') . '</p></div>';
+            }
+        }
+        if (isset($_GET['deleted'])) {
+            if ($_GET['deleted']) {
+                echo '<div class="notice notice-success"><p>' . esc_html__('Backup deleted successfully!', 'pic-pilot') . '</p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p>' . esc_html__('Failed to delete backup.', 'pic-pilot') . '</p></div>';
+            }
+        }
 
         // Stats section
         echo '<div id="pic-pilot-backup-stats">';
@@ -65,15 +91,32 @@ class BackupManager {
                 $file = esc_html($meta['backup_filename'] ?? '-');
                 $date = !empty($meta['backup_created']) ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $meta['backup_created']) : '-';
                 $size = !empty($meta['original_filesize']) ? size_format($meta['original_filesize'], 2) : '-';
+                $backup_file = \PicPilot\Backup\BackupService::get_backup_dir() . ($meta['backup_filename'] ?? '');
+                $current_file = get_attached_file($post->ID);
+                // Check if backup exists and is different from current
+                $can_restore = file_exists($backup_file) && (filesize($backup_file) !== @filesize($current_file));
                 echo '<tr>';
                 echo '<td>' . $thumb . '</td>';
                 echo '<td><a href="' . esc_url($edit_link) . '" target="_blank">' . $title . '</a></td>';
                 echo '<td>' . $file . '</td>';
                 echo '<td>' . $date . '</td>';
                 echo '<td>' . $size . '</td>';
-                // Actions (to implement restore/delete)
-                echo '<td><a href="#" class="button small disabled">' . esc_html__('Restore', 'pic-pilot') . '</a> ';
-                echo '<a href="#" class="button small disabled">' . esc_html__('Delete', 'pic-pilot') . '</a></td>';
+                echo '<td>
+                <form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline;">'
+                    . wp_nonce_field('pic_pilot_restore_backup_' . $post->ID, '_wpnonce', true, false)
+                    . '<input type="hidden" name="action" value="pic_pilot_restore_backup">'
+                    . '<input type="hidden" name="attachment_id" value="' . esc_attr($post->ID) . '">'
+                    . '<button class="button" aria-label="' . esc_attr__('Restore original image', 'pic-pilot') . '"'
+                    . ($can_restore ? '' : ' disabled')
+                    . '>' . esc_html__('Restore', 'pic-pilot') . '</button>'
+                    . '</form>
+                    <form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline;">'
+                    . wp_nonce_field('pic_pilot_delete_backup_' . $post->ID, '_wpnonce', true, false)
+                    . '<input type="hidden" name="action" value="pic_pilot_delete_backup">'
+                    . '<input type="hidden" name="attachment_id" value="' . esc_attr($post->ID) . '">'
+                    . '<button class="button button-danger" aria-label="' . esc_attr__('Delete backup', 'pic-pilot') . '" onclick="return confirm(\'' . esc_js(__('Are you sure you want to delete this backup?', 'pic-pilot')) . '\');">' . esc_html__('Delete', 'pic-pilot') . '</button>'
+                    . '</form>
+                </td>';
                 echo '</tr>';
             }
         } else {
@@ -121,5 +164,35 @@ class BackupManager {
             }
         }
         return size_format($total, 2);
+    }
+
+    public static function handle_restore_backup() {
+        $attachment_id = intval($_POST['attachment_id'] ?? 0);
+        check_admin_referer('pic_pilot_restore_backup_' . $attachment_id);
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Unauthorized', 'pic-pilot'));
+        }
+
+        $success = \PicPilot\Backup\BackupService::restore_backup($attachment_id);
+        Logger::log(($success ? '✅ Restored' : '❌ Failed to restore') . ' backup for image ID ' . $attachment_id);
+
+        wp_redirect(admin_url('admin.php?page=pic-pilot-backups&restored=' . ($success ? '1' : '0')));
+        exit;
+    }
+
+    public static function handle_delete_backup() {
+        $attachment_id = intval($_POST['attachment_id'] ?? 0);
+        check_admin_referer('pic_pilot_delete_backup_' . $attachment_id);
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Unauthorized', 'pic-pilot'));
+        }
+
+        $success = \PicPilot\Backup\BackupService::delete_backup($attachment_id);
+        Logger::log(($success ? '🗑️ Deleted' : '❌ Failed to delete') . ' backup for image ID ' . $attachment_id);
+
+        wp_redirect(admin_url('admin.php?page=pic-pilot-backups&deleted=' . ($success ? '1' : '0')));
+        exit;
     }
 }

@@ -93,6 +93,7 @@ class Optimizer {
     protected static function optimize_file($file_path): array {
         $compressor = new LocalJpegCompressor();
         $before = filesize($file_path);
+
         $success = $compressor->compress($file_path);
         $after = filesize($file_path);
         Logger::log("📊 Before: " . size_format($before) . " | After: " . size_format($after) . " | File: $file_path");
