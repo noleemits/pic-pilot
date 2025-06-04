@@ -10,6 +10,10 @@ Author: Lee (Noleemits)
 require_once __DIR__ . '/vendor/autoload.php';
 
 use PicPilot\Admin\MediaLibrary;
+//use backup manger
+use PicPilot\Backup\BackupManager;
+use PicPilot\Admin\Settings;
+
 
 \PicPilot\Admin\SettingsPage::init();
 \PicPilot\Admin\BulkOptimize::init();
@@ -18,10 +22,12 @@ use PicPilot\Admin\MediaLibrary;
 
 define('PIC_PILOT_VERSION', '0.1.0');
 
+
 //Settings page
 add_action('plugins_loaded', function () {
     \PicPilot\Admin\SettingsPage::init();
     MediaLibrary::init();
+    BackupManager::init();
     add_action('admin_init', ['\PicPilot\Admin\SettingsPage', 'register_settings']);
 });
 

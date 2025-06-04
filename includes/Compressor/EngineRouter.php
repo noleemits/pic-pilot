@@ -9,6 +9,7 @@ class EngineRouter {
     public static function get_compressor(string $mime): CompressorInterface {
         $settings = Settings::get();
 
+
         if (strpos($mime, 'png') !== false) {
             if (!empty($settings['enable_tinypng']) && !empty($settings['tinypng_api_key'])) {
                 Logger::log("🔌 Routing PNG to TinyPNG engine");

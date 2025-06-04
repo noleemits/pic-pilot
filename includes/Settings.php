@@ -13,7 +13,11 @@ class Settings {
     public static function get(): array {
         return get_option('pic_pilot_options', []);
     }
-
+    //Fucntion to re-use backup enabled check
+    public static function is_backup_enabled() {
+        $options = self::all();
+        return !empty($options['enable_backup']);
+    }
 
     public static function all() {
         return wp_parse_args(get_option('pic_pilot_options', []), self::$defaults);

@@ -17,6 +17,7 @@ class ComposerStaticInit9d7dcec519a784634fd6d303134a0b5c
         'PicPilot\\' => 
         array (
             0 => __DIR__ . '/../..' . '/includes',
+            1 => __DIR__ . '/../..' . '/src',
         ),
     );
 

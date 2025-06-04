@@ -6,5 +6,5 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
-    'PicPilot\\' => array($baseDir . '/includes'),
+    'PicPilot\\' => array($baseDir . '/includes', $baseDir . '/src'),
 );

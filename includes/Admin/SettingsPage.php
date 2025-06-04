@@ -1,6 +1,9 @@
 <?php
 
 namespace PicPilot\Admin;
+
+use PicPilot\Settings;
+
 //Register settings menu
 class SettingsPage {
     public static function init() {
@@ -40,6 +43,17 @@ class SettingsPage {
             'pic-pilot',                      // Submenu slug (same as parent — required!)
             [self::class, 'render_settings_page']
         );
+        // Add Backup Manager submenu, only if backup is enabled
+        if (Settings::is_backup_enabled()) {
+            add_submenu_page(
+                'pic-pilot', // Parent slug
+                __('Backup Manager', 'pic-pilot'), // Page <title>
+                __('Backup Manager', 'pic-pilot'), // Menu label
+                'manage_options',
+                'pic-pilot-backups', // Slug for this submenu
+                ['\\PicPilot\\Backup\\BackupManager', 'render_backup_page'] // Callback to render the UI
+            );
+        }
     }
 
     public static function render_settings_page() {
