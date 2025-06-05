@@ -75,6 +75,7 @@ class Optimizer {
             'timestamp' => time(),
         ]);
 
+
         Logger::log("✅ Total saved for ID $attachment_id: " . size_format($total_saved));
 
         return [

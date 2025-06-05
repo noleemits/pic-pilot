@@ -16,62 +16,39 @@ class BackupManager {
     public static function render_backup_page() {
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Pic Pilot Backups', 'pic-pilot') . '</h1>';
-        echo '<div class="notice notice-info" style="margin-bottom:15px;"><p>'
-            . esc_html__('Note: Backups are tied to their Media Library images. If you delete an image from the Media Library, its backup will be deleted as well.', 'pic-pilot')
-            . '</p></div>';
 
+        // Scan all backup folders in uploads/pic-pilot-backups
+        $uploads = wp_upload_dir();
+        $backup_root = trailingslashit($uploads['basedir']) . 'pic-pilot-backups/';
+        $dirs = is_dir($backup_root) ? scandir($backup_root) : [];
+        $backups = [];
 
-        // Display notices for restore/delete
-        if (isset($_GET['restored'])) {
-            if ($_GET['restored']) {
-                echo '<div class="notice notice-success"><p>' . esc_html__('Backup restored successfully!', 'pic-pilot') . '</p></div>';
-            } else {
-                echo '<div class="notice notice-error"><p>' . esc_html__('Failed to restore backup.', 'pic-pilot') . '</p></div>';
+        foreach ($dirs as $entry) {
+            if ($entry === '.' || $entry === '..' || !is_dir($backup_root . $entry)) continue;
+            $manifest_file = $backup_root . $entry . '/manifest.json';
+            if (file_exists($manifest_file)) {
+                $manifest = json_decode(file_get_contents($manifest_file), true);
+                $attachment_id = intval($entry);
+                $post = get_post($attachment_id);
+                if ($post && $post->post_type === 'attachment') {
+                    $backups[] = [
+                        'attachment_id' => $attachment_id,
+                        'post' => $post,
+                        'manifest' => $manifest,
+                        'backup_dir' => $backup_root . $entry . '/',
+                    ];
+                }
             }
         }
-        if (isset($_GET['deleted'])) {
-            if ($_GET['deleted']) {
-                echo '<div class="notice notice-success"><p>' . esc_html__('Backup deleted successfully!', 'pic-pilot') . '</p></div>';
-            } else {
-                echo '<div class="notice notice-error"><p>' . esc_html__('Failed to delete backup.', 'pic-pilot') . '</p></div>';
-            }
-        }
 
-        // Stats section
-        echo '<div id="pic-pilot-backup-stats">';
-        echo '<strong>' . esc_html__('Total Backups:', 'pic-pilot') . '</strong> ' . esc_html(self::get_total_backups());
-        echo ' &mdash; <strong>' . esc_html__('Space Used:', 'pic-pilot') . '</strong> ' . esc_html(self::get_total_space());
-        echo '</div>';
-
-        // Search form
-        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        echo '<form method="get" style="margin:1em 0;">';
-        echo '<input type="hidden" name="page" value="pic-pilot-backups">';
-        echo '<input type="search" name="s" value="' . esc_attr($search) . '" placeholder="' . esc_attr__('Search backups...', 'pic-pilot') . '">';
-        echo '<input type="submit" class="button" value="' . esc_attr__('Search', 'pic-pilot') . '">';
-        echo '</form>';
-
-        // Query for backups
+        // Pagination
         $paged = max(1, intval($_GET['paged'] ?? 1));
-        $args = [
-            'post_type'      => 'attachment',
-            'post_status'    => 'inherit',
-            'posts_per_page' => self::PER_PAGE,
-            'paged'          => $paged,
-            'meta_query'     => [
-                [
-                    'key'     => \PicPilot\Backup\BackupService::META_KEY,
-                    'compare' => 'EXISTS',
-                ],
-            ],
-            'orderby'        => 'ID',
-            'order'          => 'DESC',
-        ];
-        if ($search) {
-            $args['s'] = $search;
-        }
-        $query = new \WP_Query($args);
+        $total = count($backups);
+        $pages = ceil($total / self::PER_PAGE);
+        $offset = ($paged - 1) * self::PER_PAGE;
+        $paged_backups = array_slice($backups, $offset, self::PER_PAGE);
 
+        // Table headers
         echo '<table class="widefat fixed striped">';
         echo '<thead><tr>';
         echo '<th>' . esc_html__('Preview', 'pic-pilot') . '</th>';
@@ -82,41 +59,69 @@ class BackupManager {
         echo '<th>' . esc_html__('Actions', 'pic-pilot') . '</th>';
         echo '</tr></thead><tbody>';
 
-        if ($query->have_posts()) {
-            foreach ($query->posts as $post) {
-                $meta = \PicPilot\Backup\BackupService::get_backup_metadata($post->ID);
+        if ($paged_backups) {
+            foreach ($paged_backups as $backup) {
+                $post = $backup['post'];
+                $manifest = $backup['manifest'];
+                $backup_dir = $backup['backup_dir'];
                 $thumb = wp_get_attachment_image($post->ID, [60, 60], true);
                 $edit_link = get_edit_post_link($post->ID);
                 $title = esc_html(get_the_title($post->ID));
-                $file = esc_html($meta['backup_filename'] ?? '-');
-                $date = !empty($meta['backup_created']) ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $meta['backup_created']) : '-';
-                $size = !empty($meta['original_filesize']) ? size_format($meta['original_filesize'], 2) : '-';
-                $backup_file = \PicPilot\Backup\BackupService::get_backup_dir() . ($meta['backup_filename'] ?? '');
-                $current_file = get_attached_file($post->ID);
-                // Check if backup exists and is different from current
-                $can_restore = file_exists($backup_file) && (filesize($backup_file) !== @filesize($current_file));
+                $file = esc_html($manifest['main']['original_path'] ?? '-');
+                $date = !empty($manifest['backup_created']) ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $manifest['backup_created']) : '-';
+                $size = !empty($manifest['original_filesize']) ? size_format($manifest['original_filesize'], 2) : '-';
+
+                // Restore button logic
+                $restored_version  = get_post_meta($post->ID, '_pic_pilot_restore_version', true);
+                $optimized_version = get_post_meta($post->ID, '_pic_pilot_optimized_version', true);
+                $already_restored = $restored_version && (!$optimized_version || $restored_version >= $optimized_version);
+
+                $main_backup_file = $backup_dir . ($manifest['main']['filename'] ?? '');
+                $manifest_exists = file_exists($backup_dir . 'manifest.json');
+                $can_restore = $manifest_exists && file_exists($main_backup_file) && !$already_restored;
+                $restore_disabled = !$can_restore ? 'disabled aria-disabled="true" title="' . esc_attr__('Already restored.', 'pic-pilot') . '"' : '';
+
+                $restore_label = $already_restored ? esc_html__('Restored', 'pic-pilot') : esc_html__('Restore', 'pic-pilot');
+
+
+                // Delete button always enabled if folder exists
+                $delete_disabled = !$manifest_exists ? 'disabled aria-disabled="true"' : '';
+
                 echo '<tr>';
                 echo '<td>' . $thumb . '</td>';
                 echo '<td><a href="' . esc_url($edit_link) . '" target="_blank">' . $title . '</a></td>';
                 echo '<td>' . $file . '</td>';
                 echo '<td>' . $date . '</td>';
                 echo '<td>' . $size . '</td>';
-                echo '<td>
-                <form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline;">'
-                    . wp_nonce_field('pic_pilot_restore_backup_' . $post->ID, '_wpnonce', true, false)
-                    . '<input type="hidden" name="action" value="pic_pilot_restore_backup">'
-                    . '<input type="hidden" name="attachment_id" value="' . esc_attr($post->ID) . '">'
-                    . '<button class="button" aria-label="' . esc_attr__('Restore original image', 'pic-pilot') . '"'
-                    . ($can_restore ? '' : ' disabled')
-                    . '>' . esc_html__('Restore', 'pic-pilot') . '</button>'
-                    . '</form>
-                    <form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline;">'
-                    . wp_nonce_field('pic_pilot_delete_backup_' . $post->ID, '_wpnonce', true, false)
-                    . '<input type="hidden" name="action" value="pic_pilot_delete_backup">'
-                    . '<input type="hidden" name="attachment_id" value="' . esc_attr($post->ID) . '">'
-                    . '<button class="button button-danger" aria-label="' . esc_attr__('Delete backup', 'pic-pilot') . '" onclick="return confirm(\'' . esc_js(__('Are you sure you want to delete this backup?', 'pic-pilot')) . '\');">' . esc_html__('Delete', 'pic-pilot') . '</button>'
-                    . '</form>
-                </td>';
+                echo '<td>';
+                // Restore button
+                echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline;">';
+                echo wp_nonce_field('pic_pilot_restore_backup_' . $post->ID, '_wpnonce', true, false);
+                echo '<input type="hidden" name="action" value="pic_pilot_restore_backup">';
+                echo '<input type="hidden" name="attachment_id" value="' . esc_attr($post->ID) . '">';
+                echo '<button class="button pic-pilot-m-r-5" ' . $restore_disabled . ' aria-label="' . esc_attr__('Restore original image', 'pic-pilot') . '">' . $restore_label . '</button>';
+                echo '<pre style="font-size:10px; color:#666;">';
+                if ($restored_version && (!$optimized_version || $restored_version >= $optimized_version)) {
+                    echo '<div style="font-size:10px; color:#0a0;">[Restored path]</div>';
+                    // ...
+                } else {
+                    echo '<div style="font-size:10px; color:#00a;">[Optimized path]</div>';
+                    // ...
+                }
+
+                echo ("optimized" . $optimized_version);
+                echo ("<br>");
+                echo ("Restored" . $restored_version);
+
+                echo '</form>';
+                // Delete button
+                echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline;">';
+                echo wp_nonce_field('pic_pilot_delete_backup_' . $post->ID, '_wpnonce', true, false);
+                echo '<input type="hidden" name="action" value="pic_pilot_delete_backup">';
+                echo '<input type="hidden" name="attachment_id" value="' . esc_attr($post->ID) . '">';
+                echo '<button class="button button-danger" ' . $delete_disabled . ' aria-label="' . esc_attr__('Delete backup', 'pic-pilot') . '" onclick="return confirm(\'' . esc_js(__('Are you sure you want to delete this backup?', 'pic-pilot')) . '\');">' . esc_html__('Delete', 'pic-pilot') . '</button>';
+                echo '</form>';
+                echo '</td>';
                 echo '</tr>';
             }
         } else {
@@ -124,17 +129,15 @@ class BackupManager {
         }
         echo '</tbody></table>';
 
-        // Pagination
-        $total = $query->max_num_pages;
-        if ($total > 1) {
-            $current = $paged;
-            $base = esc_url_raw(add_query_arg(['paged' => '%#%', 's' => $search]));
+        // Pagination links
+        if ($pages > 1) {
+            $base = esc_url_raw(add_query_arg(['paged' => '%#%']));
             echo '<div class="tablenav"><div class="tablenav-pages">';
             echo paginate_links([
                 'base'      => $base,
                 'format'    => '',
-                'current'   => $current,
-                'total'     => $total,
+                'current'   => $paged,
+                'total'     => $pages,
                 'prev_text' => __('« Prev'),
                 'next_text' => __('Next »'),
             ]);

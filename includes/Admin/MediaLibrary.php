@@ -27,19 +27,41 @@ Register new column
     public static function render_custom_column($column_name, $post_id) {
         if ($column_name !== 'pic_pilot_status') return;
 
+        $optimized_version = get_post_meta($post_id, '_pic_pilot_optimized_version', true);
+        $restored_version  = get_post_meta($post_id, '_pic_pilot_restore_version', true);
+
+        error_log("PicPilot Debug — ID {$post_id}");
+        error_log("Optimized version: " . var_export($optimized_version, true));
+        error_log("Restored version: " . var_export($restored_version, true));
+
+
         if (!\PicPilot\Utils::is_compressible($post_id)) {
             echo '<span class="pic-pilot-status pic-pilot-not-eligible">' . esc_html__('Not eligible', 'pic-pilot') . '</span>';
             return;
         }
 
-        $meta = get_post_meta($post_id, '_pic_pilot_optimization', true);
+        $meta   = get_post_meta($post_id, '_pic_pilot_optimization', true);
         $status = $meta['status'] ?? null;
-        $saved = isset($meta['saved']) ? (int) $meta['saved'] : 0;
+        $saved  = isset($meta['saved']) ? (int) $meta['saved'] : 0;
 
+        $nonce = wp_create_nonce('pic_pilot_optimize_' . $post_id);
+        $url   = admin_url('admin-ajax.php?action=pic_pilot_optimize&attachment_id=' . $post_id . '&_wpnonce=' . $nonce);
+
+        // Check for restored and not yet re-optimized (covers: restored, or restored and never optimized)
+        if ($restored_version && (!$optimized_version || $restored_version <= 0 || $restored_version >= $optimized_version)) {
+            echo '<div style="font-size:10px; color:#0a0;">[Restored path]</div>';
+            echo '<span class="pic-pilot-status pic-pilot-restored">♻️ ' . esc_html__('Restored', 'pic-pilot') . '</span><br>';
+            echo '<a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Optimize Now', 'pic-pilot') . '</a>';
+            return;
+        }
+
+
+        // ✅ Otherwise handle by status
         switch ($status) {
             case 'optimized':
                 echo '<span class="pic-pilot-status pic-pilot-success">✅ ' . esc_html__('Optimized', 'pic-pilot') . '</span><br>';
-                echo '<span class="pic-pilot-saved">' . esc_html(size_format($saved)) . ' ' . esc_html__('saved', 'pic-pilot') . '</span>';
+                echo '<span class="pic-pilot-saved">' . esc_html(size_format($saved)) . ' ' . esc_html__('saved', 'pic-pilot') . '</span><br>';
+                echo '<button class="button button-small" disabled>' . esc_html__('Optimized', 'pic-pilot') . '</button>';
                 break;
 
             case 'backup_only':
@@ -51,34 +73,16 @@ Register new column
                 break;
 
             case 'failed':
-                // Retrieve metadata for the attachment
-                $meta = get_post_meta($post_id, '_pic_pilot_optimization', true);
-
-                // Get the error message from metadata or use a default message
                 $error_message = $meta['error'] ?? esc_html__('Optimization failed', 'pic-pilot');
-
-                // Generate a nonce for the retry action
-                $nonce = wp_create_nonce('pic_pilot_optimize_' . $post_id);
-
-                // Generate the retry URL for the AJAX request
-                $retry_url = admin_url('admin-ajax.php?action=pic_pilot_optimize&attachment_id=' . $post_id . '&_wpnonce=' . $nonce);
-
-                // Display the error message and the retry button
                 echo '<span class="pic-pilot-status pic-pilot-error">❌ ' . esc_html($error_message) . '</span><br>';
-                echo '<a class="button button-small" href="' . esc_url($retry_url) . '">' . esc_html__('Retry', 'pic-pilot') . '</a>';
+                echo '<a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Retry', 'pic-pilot') . '</a>';
                 break;
 
-
-
-
             default:
-                $nonce = wp_create_nonce('pic_pilot_optimize_' . $post_id);
-                $url = admin_url('admin-ajax.php?action=pic_pilot_optimize&attachment_id=' . $post_id . '&_wpnonce=' . $nonce);
                 echo '<a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Optimize Now', 'pic-pilot') . '</a>';
                 break;
         }
     }
-
 
 
     /**

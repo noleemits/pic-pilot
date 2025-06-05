@@ -9,6 +9,7 @@ use PicPilot\Logger;
 
 class BackupService {
     const META_KEY = '_pic_pilot_backup';
+    const BACKUP_DIR = '/pic-pilot-backups/';
 
     /**
      * Get the backup directory (creates if missing)
@@ -43,96 +44,197 @@ class BackupService {
     }
 
     /**
-     * Create a backup for an attachment (if not already backed up)
-     * Only if backup is enabled in settings
+     * Create a full backup (main file + all thumbs) for an attachment.
      */
     public static function create_backup(int $attachment_id): bool {
-        // Settings check
-        if (! Settings::is_backup_enabled()) {
-
+        // Check if backup is enabled
+        if (!Settings::is_backup_enabled()) {
+            Logger::log("⏩ Skipping backup for ID $attachment_id: Backups disabled.");
             return false;
         }
 
-        $file = get_attached_file($attachment_id);
-        if (! file_exists($file)) return false;
-
-        $meta = self::get_backup_metadata($attachment_id);
-        if (! empty($meta) && file_exists(self::get_backup_dir() . $meta['backup_filename'])) {
-            // Already backed up
-            return true;
+        $main_file = get_attached_file($attachment_id);
+        if (!$main_file || !file_exists($main_file)) {
+            Logger::log("❌ Cannot backup: Main file missing for ID $attachment_id");
+            return false;
         }
 
-        $backup_path = self::get_backup_file_path($attachment_id);
-        $backup_filename = basename($backup_path);
-        if (! @copy($file, $backup_path)) return false;
+        $meta = wp_get_attachment_metadata($attachment_id);
+        if (empty($meta)) {
+            Logger::log("❌ Cannot backup: No attachment metadata for ID $attachment_id");
+            return false;
+        }
 
-        $meta = [
-            'backup_filename'      => $backup_filename,
-            'backup_created'       => time(),
-            'original_filename'    => basename($file),
-            'original_filesize'    => filesize($file),
-            'original_mime'        => get_post_mime_type($attachment_id),
-            'original_dimensions'  => self::get_image_dimensions($file),
-            'backup_version'       => date('YmdHis'),
+        $uploads = wp_upload_dir();
+        $backup_root = trailingslashit($uploads['basedir']) . ltrim(self::BACKUP_DIR, '/');
+        $backup_dir = $backup_root . $attachment_id . '/';
+
+        // Create the backup folder
+        if (!wp_mkdir_p($backup_dir)) {
+            Logger::log("❌ Cannot backup: Failed to create backup folder for ID $attachment_id");
+            return false;
+        }
+
+        // Prepare manifest
+        $manifest = [
+            'main' => [
+                'filename'      => 'main' . '.' . pathinfo($main_file, PATHINFO_EXTENSION),
+                'original_path' => self::relative_upload_path($main_file, $uploads['basedir'])
+            ],
+            'thumbnails' => [],
+            'backup_created' => time(),
+            'original_filesize' => filesize($main_file)
         ];
-        self::set_backup_metadata($attachment_id, $meta);
+
+        // Copy main file
+        $main_backup = $backup_dir . $manifest['main']['filename'];
+        if (!@copy($main_file, $main_backup)) {
+            Logger::log("❌ Cannot backup: Failed to copy main file for ID $attachment_id");
+            return false;
+        }
+
+        // Copy all thumbnails
+        $thumb_errors = 0;
+        if (!empty($meta['sizes']) && is_array($meta['sizes'])) {
+            $base_dir = dirname($main_file);
+            foreach ($meta['sizes'] as $size_key => $size_data) {
+                if (empty($size_data['file'])) continue;
+                $thumb_file = $base_dir . '/' . $size_data['file'];
+                $thumb_ext  = pathinfo($thumb_file, PATHINFO_EXTENSION);
+                $thumb_backup = $backup_dir . 'thumb-' . $size_key . '.' . $thumb_ext;
+
+                $manifest['thumbnails'][$size_key] = [
+                    'filename' => basename($thumb_backup),
+                    'original_path' => self::relative_upload_path($thumb_file, $uploads['basedir'])
+                ];
+
+                if (file_exists($thumb_file)) {
+                    if (!@copy($thumb_file, $thumb_backup)) {
+                        Logger::log("❌ Cannot backup: Failed to copy thumb $size_key for ID $attachment_id");
+                        $thumb_errors++;
+                    }
+                } else {
+                    Logger::log("⚠️ Cannot backup: Thumb $size_key not found for ID $attachment_id");
+                    $thumb_errors++;
+                }
+            }
+        }
+
+        // Write manifest
+        $manifest_file = $backup_dir . 'manifest.json';
+        file_put_contents($manifest_file, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        Logger::log("✅ Backup created for ID $attachment_id: Main + " . count($manifest['thumbnails']) . " thumbs. " . ($thumb_errors ? "Errors: $thumb_errors" : ""));
+
         return true;
     }
 
     /**
+     * Get the relative upload path for manifest (e.g., 2025/06/photo-scaled.jpg).
+     */
+    protected static function relative_upload_path($file, $basedir) {
+        $rel = ltrim(str_replace($basedir, '', $file), '/\\');
+        return str_replace('\\', '/', $rel); // normalize for Windows hosts
+    }
+    /**
      * Restore the original image from backup (and regenerate thumbnails)
      */
     public static function restore_backup(int $attachment_id): bool {
-        // Only restore if setting is enabled
-        if (!Settings::is_backup_enabled()) {
+        if (!\PicPilot\Settings::is_backup_enabled()) {
+            \PicPilot\Logger::log("Restore failed: Backups not enabled.");
             return false;
         }
 
-        $meta = self::get_backup_metadata($attachment_id);
-        if (empty($meta)) {
+        $uploads = wp_upload_dir();
+        $backup_dir = trailingslashit($uploads['basedir']) . 'pic-pilot-backups/' . $attachment_id . '/';
+        $manifest_file = $backup_dir . 'manifest.json';
+
+        if (!file_exists($manifest_file)) {
+            \PicPilot\Logger::log("Restore failed: Manifest not found for ID $attachment_id");
             return false;
         }
 
-        $backup_file = self::get_backup_dir() . $meta['backup_filename'];
-        if (!file_exists($backup_file)) {
+        $manifest = json_decode(file_get_contents($manifest_file), true);
+        if (empty($manifest['main']['filename']) || empty($manifest['main']['original_path'])) {
+            \PicPilot\Logger::log("Restore failed: Manifest incomplete for ID $attachment_id");
             return false;
         }
 
-        $current_file = get_attached_file($attachment_id);
-        if (!$current_file || !is_writable(dirname($current_file))) {
+        // 1. Restore main file
+        $main_backup = $backup_dir . $manifest['main']['filename'];
+        $main_target = trailingslashit($uploads['basedir']) . ltrim($manifest['main']['original_path'], '/');
+        if (!file_exists($main_backup) || !is_writable(dirname($main_target))) {
+            \PicPilot\Logger::log("Restore failed: Main backup missing or unwritable for ID $attachment_id");
+            return false;
+        }
+        if (!@copy($main_backup, $main_target)) {
+            \PicPilot\Logger::log("Restore failed: Could not copy main backup for ID $attachment_id");
             return false;
         }
 
-        // Overwrite current file with backup
-        if (!@copy($backup_file, $current_file)) {
-            return false;
+        // 2. Restore all thumbnails
+        $thumb_count = 0;
+        $thumb_failures = 0;
+        if (!empty($manifest['thumbnails']) && is_array($manifest['thumbnails'])) {
+            foreach ($manifest['thumbnails'] as $size_key => $thumb_meta) {
+                $thumb_backup = $backup_dir . $thumb_meta['filename'];
+                $thumb_target = trailingslashit($uploads['basedir']) . ltrim($thumb_meta['original_path'], '/');
+                if (file_exists($thumb_backup) && is_writable(dirname($thumb_target))) {
+                    if (!@copy($thumb_backup, $thumb_target)) {
+                        $thumb_failures++;
+                        \PicPilot\Logger::log("Restore failed: Could not copy thumb $size_key for ID $attachment_id");
+                    } else {
+                        $thumb_count++;
+                    }
+                } else {
+                    $thumb_failures++;
+                    \PicPilot\Logger::log("Restore failed: Thumb backup missing or unwritable ($size_key) for ID $attachment_id");
+                }
+            }
         }
 
-        // Regenerate thumbnails/metadata
-        require_once ABSPATH . 'wp-admin/includes/image.php';
-        $attach_data = wp_generate_attachment_metadata($attachment_id, $current_file);
-        wp_update_attachment_metadata($attachment_id, $attach_data);
+        // 3. Optionally update attachment metadata (sizes, timestamps, etc)
+        // In most cases, metadata does not need regeneration since the files are exact matches.
+        // If you want to refresh the metadata, uncomment below:
+        /*
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+    $attach_data = wp_generate_attachment_metadata($attachment_id, $main_target);
+    wp_update_attachment_metadata($attachment_id, $attach_data);
+    */
+        update_post_meta($attachment_id, '_pic_pilot_restore_version', $manifest['backup_created']);
+
+
+        \PicPilot\Logger::log("✅ Restored backup for ID $attachment_id: Main file + $thumb_count thumbs. " . ($thumb_failures ? 'Failures: ' . $thumb_failures : ''));
 
         return true;
     }
+
+
 
     /**
      * Delete the backup file and its metadata
      */
     public static function delete_backup(int $attachment_id): bool {
-        $meta = self::get_backup_metadata($attachment_id);
-        if (empty($meta)) {
+        $uploads = wp_upload_dir();
+        $backup_dir = trailingslashit($uploads['basedir']) . 'pic-pilot-backups/' . $attachment_id . '/';
+        if (!is_dir($backup_dir)) {
+            \PicPilot\Logger::log("Delete backup: No backup folder for ID $attachment_id");
             return false;
         }
-
-        $backup_file = self::get_backup_dir() . $meta['backup_filename'];
-        if (file_exists($backup_file)) {
-            @unlink($backup_file);
+        // Recursively remove all files
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($backup_dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $fileinfo) {
+            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
+            $todo($fileinfo->getRealPath());
         }
-        self::delete_backup_metadata($attachment_id);
-
+        rmdir($backup_dir);
+        \PicPilot\Logger::log("🗑️ Deleted backup folder for ID $attachment_id");
         return true;
     }
+
 
     /**
      * Get backup metadata from postmeta
