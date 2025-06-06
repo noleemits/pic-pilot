@@ -97,13 +97,27 @@ class SettingsPage {
     }
 
     protected static function render_general_tab() {
-        self::render_server_capabilities();
+        echo '<div class="pic-pilot-settings-columns">';
+        echo '<div class="pic-pilot-col-main">';
         echo '<h2>' . esc_html__('General Settings', 'pic-pilot') . '</h2>';
         echo '<form method="post" action="options.php">';
         settings_fields('pic_pilot_settings_group');
         do_settings_sections('pic-pilot');
         submit_button();
         echo '</form>';
+        echo '</div>';
+        echo '<div class="pic-pilot-col-side">';
+        self::render_server_capabilities();
+        $warn_path = PIC_PILOT_DIR . 'includes/partials/settings-warnings.php';
+        if (file_exists($warn_path)) {
+            include $warn_path;
+        }
+        $backup_info_path = PIC_PILOT_DIR . 'includes/partials/settings-backup-info.php';
+        if (file_exists($backup_info_path)) {
+            include $backup_info_path;
+        }
+        echo '</div>';
+        echo '</div>';
     }
 
     protected static function render_advanced_tab() {
@@ -124,10 +138,14 @@ class SettingsPage {
     }
 
     protected static function render_docs_tab() {
-        echo '<h2>' . esc_html__('Documentation', 'pic-pilot') . '</h2>';
-        echo '<div class="pic-pilot-docs">';
-        echo wpautop(esc_html__('Pic Pilot lets you optimize, backup, and restore images with maximum control. Every optimization is routed through a safe workflow that guarantees a backup is created before your images are compressed, so you can always revert.\n\nBackups include the scaled image and all WordPress-generated thumbnails for each Media Library attachment. (The original upload is only backed up if it is still used by WordPress.) Restoring, re-optimizing, or repeating these actions may result in slightly different file sizes due to lossy compression and format conversions.\n\nBackups can double disk usage for each image. Always monitor available space, and use the Backup Manager to delete unused backups or originals as needed.', 'pic-pilot'));
-        echo '</div>';
+        $docs_path = PIC_PILOT_DIR . 'includes/partials/docs-admin.php';
+        if (file_exists($docs_path)) {
+            echo '<div class="pic-pilot-docs">';
+            include $docs_path;
+            echo '</div>';
+        } else {
+            echo '<p>' . esc_html__('Documentation not found.', 'pic-pilot') . '</p>';
+        }
     }
 
     // Extra: Server Capabilities Section

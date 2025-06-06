@@ -42,3 +42,38 @@
 .pic-pilot-m-r-5 {
     margin-right: 5px;
 }
+
+.pic-pilot-settings-columns {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    margin-top: 24px;
+
+}
+
+.pic-pilot-col-side {
+    flex: 1 1 280px;
+    min-width: 260px;
+    max-width: 400px;
+}
+
+.pic-pilot-col-side .notice {
+    margin-bottom: 20px;
+}
+
+.pic-pilot-col-side .bar-left-orange {
+    border-left: 4px solid #f0ad4e;
+    padding-left: 10px;
+    margin-bottom: 20px;
+}
+
+.pic-pilot-col-side .bar-left-blue {
+    border-left: 4px solid #337ab7;
+    padding-left: 10px;
+    margin-bottom: 20px;
+}
+
+.wrap.pic-pilot-settings .pic-pilot-settings-tab-content {
+    background-color: #ffffff;
+    padding: 1rem;
+}

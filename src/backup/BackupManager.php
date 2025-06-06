@@ -13,7 +13,37 @@ class BackupManager {
     }
     const PER_PAGE = 20;
 
+
     public static function render_backup_page() {
+        // 1. Calculate backup stats here:
+        $uploads = wp_upload_dir();
+        $backup_root = trailingslashit($uploads['basedir']) . 'pic-pilot-backups/';
+        $backup_dirs = is_dir($backup_root) ? array_filter(scandir($backup_root), function ($d) use ($backup_root) {
+            return $d !== '.' && $d !== '..' && is_dir($backup_root . $d);
+        }) : [];
+
+        $backup_count = count($backup_dirs);
+        $total_size = 0;
+        foreach ($backup_dirs as $dir) {
+            $dir_path = $backup_root . $dir . '/';
+            foreach (glob($dir_path . '*') as $file) {
+                $total_size += filesize($file);
+            }
+        }
+        $total_size_mb = $total_size ? round($total_size / 1024 / 1024, 2) : 0;
+
+        // 2. Pass variables to partial:
+        $backup_summary = [
+            'count'   => $backup_count,
+            'size_mb' => $total_size_mb,
+        ];
+        // 3. Include the partial at the right spot in your page render:
+        $summary_path = PIC_PILOT_DIR . 'includes/partials/backup-manager-info.php';
+        if (file_exists($summary_path)) {
+            include $summary_path;
+        }
+
+
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Pic Pilot Backups', 'pic-pilot') . '</h1>';
 

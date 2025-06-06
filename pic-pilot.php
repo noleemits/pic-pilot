@@ -21,6 +21,9 @@ use PicPilot\Admin\Settings;
 
 
 define('PIC_PILOT_VERSION', '0.1.0');
+// Define the plugin directory
+define('PIC_PILOT_DIR', plugin_dir_path(__FILE__));
+
 
 
 //Settings page
