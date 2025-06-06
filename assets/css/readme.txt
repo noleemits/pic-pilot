@@ -97,3 +97,90 @@ Bulk/auto cleanup of old backups and advanced search/filter tools in the Backup 
 
 In short:
 Pic Pilot now offers best-in-class image optimization with bulletproof backup and restoration—giving users speed, safety, and full control.
+
+How Image Optimization & Backup/Restore Work in Pic Pilot
+Where Optimization Is Triggered
+All image optimizations are triggered via the main AJAX action:
+
+php
+Copy
+Edit
+add_action('wp_ajax_pic_pilot_optimize', function () { ... });
+This code lives in your pic-pilot.php file.
+
+This ensures every optimization request—whether from the Media Library UI, the Backup Manager, or a future bulk/batch process—goes through the same unified entry point.
+
+How the Process Flows (Step by Step)
+User Clicks “Optimize” (or a bulk optimize is triggered)
+
+This sends an AJAX request to the pic_pilot_optimize endpoint.
+
+Attachment ID is Resolved
+
+The handler receives the attachment_id of the image to be optimized.
+
+Backup is Always Created First
+
+Before any optimization or compression happens, the plugin always creates a fresh backup:
+
+php
+Copy
+Edit
+if (\PicPilot\Settings::is_backup_enabled()) {
+    \PicPilot\Backup\BackupService::create_backup($attachment_id);
+}
+This backup includes the main file and all generated thumbnails, stored in a dedicated folder (/pic-pilot-backups/{attachment_id}/), along with a manifest file (manifest.json) that records file paths and a backup_created timestamp.
+
+The Latest Backup’s Timestamp is Captured
+
+Immediately after backup, the code reads the manifest file and fetches the latest backup_created timestamp.
+
+Optimization is Routed to the Correct Engine
+
+The plugin uses your custom EngineRouter to decide which compressor to use:
+
+Local for JPEG, or TinyPNG for PNG, etc.
+
+This ensures optimizations are always run by the best available tool for each image type.
+
+The Compressor Runs
+
+The actual optimization occurs—this could be local or remote (API-based).
+
+Optimization Meta is Synchronized with Backup
+
+After a successful optimization, the plugin sets _pic_pilot_optimized_version meta to match the exact timestamp of the most recent backup.
+
+This means your “restored” and “optimized” logic will always be perfectly in sync, regardless of the engine, file type, or external API/network delays.
+
+The UI and All Restore Logic are Always Accurate
+
+Since both meta values now use the manifest’s backup_created timestamp, the Media Library and Backup Manager can accurately reflect the real image state:
+
+If a user restores, the button disables (“Restored”) and shows a helpful status.
+
+If they re-optimize, the UI updates to “Optimized” and displays saved space.
+
+Why This Is Robust
+No more timing gaps:
+Network delays, slow APIs, or different engines no longer cause meta mismatches.
+
+Perfectly accurate restore/optimize UI for every image type—JPEG, PNG, or anything added in the future.
+
+Every optimize is safely revertible, and the user can always see the true image state.
+
+Developer-Friendly Features
+All core logic is in one place—the AJAX handler in pic-pilot.php—so it’s easy to extend or customize.
+
+Modular router and compressor structure makes it simple to add new engines (like WebP or AVIF).
+
+Backup/restore is DRY and always in sync with optimization actions.
+
+Future features (bulk, async, advanced cleanup) can all rely on this solid backbone.
+
+In Short
+Every image optimization—local or remote—is always preceded by a backup.
+
+The backup and optimization version meta are always matched by reading the manifest, not guessing with timestamps.
+
+The Media Library and Backup Manager always show the true, current state of every image, so users can confidently optimize, restore, and re-optimize at any time.

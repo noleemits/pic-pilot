@@ -29,12 +29,6 @@ Register new column
 
         $optimized_version = get_post_meta($post_id, '_pic_pilot_optimized_version', true);
         $restored_version  = get_post_meta($post_id, '_pic_pilot_restore_version', true);
-
-        error_log("PicPilot Debug — ID {$post_id}");
-        error_log("Optimized version: " . var_export($optimized_version, true));
-        error_log("Restored version: " . var_export($restored_version, true));
-
-
         if (!\PicPilot\Utils::is_compressible($post_id)) {
             echo '<span class="pic-pilot-status pic-pilot-not-eligible">' . esc_html__('Not eligible', 'pic-pilot') . '</span>';
             return;
@@ -90,9 +84,12 @@ Register new column
      */
 
     public static function handle_optimize_now_ajax(int $attachment_id): array {
+        Logger::log("Backup about to run: " . time());
+        //Backup before optimization
         if (\PicPilot\Settings::is_backup_enabled()) {
             \PicPilot\Backup\BackupService::create_backup($attachment_id);
         }
+        Logger::log("Backup finished: " . time());
         Logger::log("🧪 Optimizing attachment ID $attachment_id");
 
         $file_path = get_attached_file($attachment_id);
@@ -145,6 +142,15 @@ Register new column
 
         // Save status for Media Library column
         if ($result['success']) {
+            // Save optimization metadata
+            $uploads = wp_upload_dir();
+            $backup_dir = trailingslashit($uploads['basedir']) . 'pic-pilot-backups/' . $attachment_id . '/';
+            $manifest = json_decode(file_get_contents($backup_dir . 'manifest.json'), true);
+            $backup_created = $manifest['backup_created'] ?? time();
+
+            Logger::log("Optimize finished: " . time());
+            update_post_meta($attachment_id, '_pic_pilot_optimized_version', $backup_created);
+            Logger::log("This is the backup created value: " . $backup_created);
             update_post_meta($attachment_id, '_pic_pilot_optimization', [
                 'status' => 'optimized',
                 'saved' => $result['saved']

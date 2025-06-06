@@ -4,6 +4,9 @@ namespace PicPilot;
 
 use PicPilot\Compressor\Local\LocalJpegCompressor;
 use PicPilot\Logger;
+//use backup manager
+use PicPilot\Backup\BackupManager;
+
 
 class Optimizer {
     /**
@@ -17,9 +20,9 @@ class Optimizer {
         $total_original = 0;
         $total_optimized = 0;
         $results = [];
-
         // Get the scaled image path (used as the "main" image by WP)
         $file_path = get_attached_file($attachment_id);
+
         if (!$file_path || !file_exists($file_path)) {
             Logger::log("❌ Cannot optimize: file not found for attachment ID $attachment_id");
             return ['success' => false, 'reason' => 'file_not_found'];
@@ -66,7 +69,6 @@ class Optimizer {
             }
         }
 
-        // Save optimization metadata
         update_post_meta($attachment_id, '_pic_pilot_optimization', [
             'original' => $total_original,
             'optimized' => $total_optimized,
@@ -75,6 +77,7 @@ class Optimizer {
             'timestamp' => time(),
         ]);
 
+        update_post_meta($attachment_id, '_pic_pilot_optimized_version', time());
 
         Logger::log("✅ Total saved for ID $attachment_id: " . size_format($total_saved));
 

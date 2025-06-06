@@ -124,8 +124,6 @@ class BackupService {
         $manifest_file = $backup_dir . 'manifest.json';
         file_put_contents($manifest_file, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-        Logger::log("✅ Backup created for ID $attachment_id: Main + " . count($manifest['thumbnails']) . " thumbs. " . ($thumb_errors ? "Errors: $thumb_errors" : ""));
-
         return true;
     }
 
@@ -201,9 +199,8 @@ class BackupService {
     $attach_data = wp_generate_attachment_metadata($attachment_id, $main_target);
     wp_update_attachment_metadata($attachment_id, $attach_data);
     */
-        update_post_meta($attachment_id, '_pic_pilot_restore_version', $manifest['backup_created']);
 
-
+        update_post_meta($attachment_id, '_pic_pilot_restore_version', $manifest['backup_created'] + 1);
         \PicPilot\Logger::log("✅ Restored backup for ID $attachment_id: Main file + $thumb_count thumbs. " . ($thumb_failures ? 'Failures: ' . $thumb_failures : ''));
 
         return true;

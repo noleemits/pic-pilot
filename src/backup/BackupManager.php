@@ -101,18 +101,6 @@ class BackupManager {
                 echo '<input type="hidden" name="attachment_id" value="' . esc_attr($post->ID) . '">';
                 echo '<button class="button pic-pilot-m-r-5" ' . $restore_disabled . ' aria-label="' . esc_attr__('Restore original image', 'pic-pilot') . '">' . $restore_label . '</button>';
                 echo '<pre style="font-size:10px; color:#666;">';
-                if ($restored_version && (!$optimized_version || $restored_version >= $optimized_version)) {
-                    echo '<div style="font-size:10px; color:#0a0;">[Restored path]</div>';
-                    // ...
-                } else {
-                    echo '<div style="font-size:10px; color:#00a;">[Optimized path]</div>';
-                    // ...
-                }
-
-                echo ("optimized" . $optimized_version);
-                echo ("<br>");
-                echo ("Restored" . $restored_version);
-
                 echo '</form>';
                 // Delete button
                 echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline;">';

@@ -118,7 +118,6 @@ class TinyPngCompressor implements CompressorInterface {
         clearstatcache(true, $file_path);
         $new_size = filesize($file_path);
         $saved = max($original_size - $new_size, 0);
-
         Logger::log("✅ TinyPNG success: $filename (" . size_format($original_size) . " → " . size_format($new_size) . ")");
         Logger::log("🔁 Download URL was: $compressed_url");
         return [

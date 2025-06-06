@@ -65,8 +65,6 @@ add_action('wp_ajax_pic_pilot_optimize', function () {
             'status' => 'optimized',
             'saved' => $result['saved']
         ]);
-        $timestamp = time();
-        update_post_meta($attachment_id, '_pic_pilot_optimized_version', $timestamp);
     }
 
     // Redirect back to the Media Library with success/failure status
