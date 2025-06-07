@@ -66,7 +66,6 @@ class TinyPngCompressor implements CompressorInterface {
         Logger::log("🔍 TinyPNG response headers:\n" . trim($headers));
 
         // Parse Location header safely
-        // Parse Location header safely
         if (!preg_match('/location:\s*(https:\/\/api\.tinify\.com\/output\/[^\r\n]+)/i', $headers, $matches)) {
             Logger::log("❌ TinyPNG: Location header missing or malformed. HTTP $status\nHeaders:\n$headers");
             return $this->fail(

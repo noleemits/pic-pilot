@@ -23,6 +23,13 @@ class SettingsPage {
             [],
             PIC_PILOT_VERSION
         );
+        wp_enqueue_script(
+            'pic-pilot-admin',
+            plugin_dir_url(__FILE__) . '../../assets/js/admin.js',
+            [],
+            PIC_PILOT_VERSION,
+            true
+        );
     }
     //Register the settings menu
     public static function register_menu() {
@@ -131,6 +138,7 @@ class SettingsPage {
     }
 
     protected static function render_tools_tab() {
+        echo '<h2>' . esc_html__('TinyPNG API Usage', 'pic-pilot') . '</h2>';
         echo '<h2>' . esc_html__('Image Tools', 'pic-pilot') . '</h2>';
         echo '<div class="notice notice-info"><p>'
             . esc_html__('More image tools coming soon (add alt text, duplicate images, etc).', 'pic-pilot') . '</p></div>';
@@ -255,7 +263,8 @@ class SettingsPage {
     public static function render_text_input($args) {
         $options = get_option('pic_pilot_options', []);
         $value = esc_attr($options[$args['label_for']] ?? '');
-        echo "<input type='text' id='{$args['label_for']}' name='pic_pilot_options[{$args['label_for']}]' value='$value' class='regular-text' />";
+        $type = $args['label_for'] === 'tinypng_api_key' ? 'password' : 'text';
+        echo "<input type='$type' id='{$args['label_for']}' name='pic_pilot_options[{$args['label_for']}]' value='$value' class='regular-text' autocomplete='off' />";
     }
 
     public static function render_checkbox($args) {
@@ -263,6 +272,7 @@ class SettingsPage {
         $checked = !empty($options[$args['label_for']]) ? 'checked' : '';
         echo "<input type='checkbox' id='{$args['label_for']}' name='pic_pilot_options[{$args['label_for']}]' value='1' $checked />";
     }
+
 
     public static function render_quality_dropdown($args) {
 

@@ -43,7 +43,6 @@ Register new column
 
         // Check for restored and not yet re-optimized (covers: restored, or restored and never optimized)
         if ($restored_version && (!$optimized_version || $restored_version <= 0 || $restored_version >= $optimized_version)) {
-            echo '<div style="font-size:10px; color:#0a0;">[Restored path]</div>';
             echo '<span class="pic-pilot-status pic-pilot-restored">♻️ ' . esc_html__('Restored', 'pic-pilot') . '</span><br>';
             echo '<a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Optimize Now', 'pic-pilot') . '</a>';
             return;
