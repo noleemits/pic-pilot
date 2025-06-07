@@ -67,6 +67,11 @@
     margin-bottom: 20px;
 }
 
+.pic-pilot-col-main,
+.pic-pilot-col-side {
+    width: 50%;
+}
+
 .pic-pilot-col-side .bar-left-blue {
     border-left: 4px solid #337ab7;
     padding-left: 10px;

@@ -177,6 +177,7 @@ class SettingsPage {
     //Register settings and fields
 
     public static function register_settings() {
+
         register_setting('pic_pilot_settings_group', 'pic_pilot_options');
 
         add_settings_section(
@@ -220,26 +221,35 @@ class SettingsPage {
             'pic_pilot_main',
             ['label_for' => 'auto_optimize_uploads']
         );
-        add_settings_section(
-            'pic_pilot_tinypng',
-            __('TinyPNG Integration', 'pic-pilot'),
 
+
+        add_settings_section(
+            'pic_pilot_compression_engines',
+            __('Image Compression Engines', 'pic-pilot'),
             function () {
-                echo '<p>' . esc_html__('Compress PNGs using the TinyPNG API. Recommended for best results.', 'pic-pilot') . '</p>';
-                echo '<p><strong>' . esc_html__('Note:', 'pic-pilot') . '</strong> ' .
-                    esc_html__('Free TinyPNG accounts are limited to 500 images per month and 5MB per image.', 'pic-pilot') .
-                    '</p>';
+                echo '<p>' . esc_html__(
+                    "For best results, we recommend using external image compression APIs for PNGs. Local compression is not available for PNG files, but you can choose your preferred external tool below.<br>Pic Pilot is designed to let you use top-tier compression at the lowest possible cost. We recommend TinyPNG for PNGs, but you can also enable external tools for JPEG and WebP images if desired.",
+                    'pic-pilot'
+                ) . '</p>';
             },
             'pic-pilot'
         );
 
-        add_settings_field(
-            'enable_tinypng',
-            __('Enable TinyPNG for PNG compression', 'pic-pilot'),
-            [self::class, 'render_checkbox'],
-            'pic-pilot',
+        add_settings_section(
             'pic_pilot_tinypng',
-            ['label_for' => 'enable_tinypng']
+            '', // Empty string for title (or a generic one)
+            function () {
+            },
+            'pic-pilot'
+        );
+
+
+        add_settings_field(
+            'png_engine',
+            __('Select PNG Compression Engine', 'pic-pilot'),
+            [self::class, 'render_png_engine_dropdown'],
+            'pic-pilot',
+            'pic_pilot_tinypng'
         );
 
         add_settings_field(
@@ -271,6 +281,27 @@ class SettingsPage {
         $options = get_option('pic_pilot_options', []);
         $checked = !empty($options[$args['label_for']]) ? 'checked' : '';
         echo "<input type='checkbox' id='{$args['label_for']}' name='pic_pilot_options[{$args['label_for']}]' value='1' $checked />";
+        // Show the disclaimer right below ONLY for this field
+        if ($args['label_for'] === 'use_tinypng_for_jpeg') {
+            echo '<div class="pic-pilot-tinypng-disclaimer" style="margin-top:8px;color:#555;">'
+                . esc_html__("To check if your API key is valid, compress an image. If the operation succeeds, your key is valid. TinyPNG no longer supports API key validation or quota checks via their API. To verify your key, compress an image or visit your TinyPNG dashboard.", 'pic-pilot')
+                . ' <a href="https://tinypng.com/dashboard" target="_blank" rel="noopener noreferrer">'
+                . esc_html__('Open Dashboard', 'pic-pilot') . '</a>.<br>'
+                . '<strong>' . esc_html__('Note:', 'pic-pilot') . '</strong> '
+                . esc_html__('Free TinyPNG accounts are limited to 500 images per month and 5MB per image.', 'pic-pilot')
+                . '</div>';
+        }
+    }
+
+    public static function render_png_engine_dropdown($args) {
+        $options = get_option('pic_pilot_options', []);
+        $selected = $options['png_engine'] ?? '';
+        echo "<select id='png_engine' name='pic_pilot_options[png_engine]'>";
+        echo "<option value='' disabled " . (empty($selected) ? 'selected' : '') . ">" . esc_html__('Choose your preferred API…', 'pic-pilot') . "</option>";
+        echo "<option value='tinypng'" . selected($selected, 'tinypng', false) . ">" . esc_html__('TinyPNG (Recommended)', 'pic-pilot') . "</option>";
+        // For future engines:
+        // echo "<option value='future_engine' disabled>" . esc_html__('Other Engine (Coming soon)', 'pic-pilot') . "</option>";
+        echo "</select>";
     }
 
 
