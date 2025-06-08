@@ -23,13 +23,6 @@ class SettingsPage {
             [],
             PIC_PILOT_VERSION
         );
-        wp_enqueue_script(
-            'pic-pilot-admin',
-            plugin_dir_url(__FILE__) . '../../assets/js/admin.js',
-            [],
-            PIC_PILOT_VERSION,
-            true
-        );
     }
     //Register the settings menu
     public static function register_menu() {
@@ -139,6 +132,8 @@ class SettingsPage {
 
     protected static function render_tools_tab() {
         echo '<h2>' . esc_html__('TinyPNG API Usage', 'pic-pilot') . '</h2>';
+        echo self::tinypng_status_notice();
+
         echo '<h2>' . esc_html__('Image Tools', 'pic-pilot') . '</h2>';
         echo '<div class="notice notice-info"><p>'
             . esc_html__('More image tools coming soon (add alt text, duplicate images, etc).', 'pic-pilot') . '</p></div>';
@@ -177,7 +172,6 @@ class SettingsPage {
     //Register settings and fields
 
     public static function register_settings() {
-
         register_setting('pic_pilot_settings_group', 'pic_pilot_options');
 
         add_settings_section(
@@ -221,35 +215,26 @@ class SettingsPage {
             'pic_pilot_main',
             ['label_for' => 'auto_optimize_uploads']
         );
-
-
-        add_settings_section(
-            'pic_pilot_compression_engines',
-            __('Image Compression Engines', 'pic-pilot'),
-            function () {
-                echo '<p>' . esc_html__(
-                    "For best results, we recommend using external image compression APIs for PNGs. Local compression is not available for PNG files, but you can choose your preferred external tool below.<br>Pic Pilot is designed to let you use top-tier compression at the lowest possible cost. We recommend TinyPNG for PNGs, but you can also enable external tools for JPEG and WebP images if desired.",
-                    'pic-pilot'
-                ) . '</p>';
-            },
-            'pic-pilot'
-        );
-
         add_settings_section(
             'pic_pilot_tinypng',
-            '', // Empty string for title (or a generic one)
+            __('TinyPNG Integration', 'pic-pilot'),
+
             function () {
+                echo '<p>' . esc_html__('Compress PNGs using the TinyPNG API. Recommended for best results.', 'pic-pilot') . '</p>';
+                echo '<p><strong>' . esc_html__('Note:', 'pic-pilot') . '</strong> ' .
+                    esc_html__('Free TinyPNG accounts are limited to 500 images per month and 5MB per image.', 'pic-pilot') .
+                    '</p>';
             },
             'pic-pilot'
         );
 
-
         add_settings_field(
-            'png_engine',
-            __('Select PNG Compression Engine', 'pic-pilot'),
-            [self::class, 'render_png_engine_dropdown'],
+            'enable_tinypng',
+            __('Enable TinyPNG for PNG compression', 'pic-pilot'),
+            [self::class, 'render_checkbox'],
             'pic-pilot',
-            'pic_pilot_tinypng'
+            'pic_pilot_tinypng',
+            ['label_for' => 'enable_tinypng']
         );
 
         add_settings_field(
@@ -275,33 +260,16 @@ class SettingsPage {
         $value = esc_attr($options[$args['label_for']] ?? '');
         $type = $args['label_for'] === 'tinypng_api_key' ? 'password' : 'text';
         echo "<input type='$type' id='{$args['label_for']}' name='pic_pilot_options[{$args['label_for']}]' value='$value' class='regular-text' autocomplete='off' />";
+
+        if ($args['label_for'] === 'tinypng_api_key') {
+            echo self::tinypng_status_notice();
+        }
     }
 
     public static function render_checkbox($args) {
         $options = get_option('pic_pilot_options', []);
         $checked = !empty($options[$args['label_for']]) ? 'checked' : '';
         echo "<input type='checkbox' id='{$args['label_for']}' name='pic_pilot_options[{$args['label_for']}]' value='1' $checked />";
-        // Show the disclaimer right below ONLY for this field
-        if ($args['label_for'] === 'use_tinypng_for_jpeg') {
-            echo '<div class="pic-pilot-tinypng-disclaimer" style="margin-top:8px;color:#555;">'
-                . esc_html__("To check if your API key is valid, compress an image. If the operation succeeds, your key is valid. TinyPNG no longer supports API key validation or quota checks via their API. To verify your key, compress an image or visit your TinyPNG dashboard.", 'pic-pilot')
-                . ' <a href="https://tinypng.com/dashboard" target="_blank" rel="noopener noreferrer">'
-                . esc_html__('Open Dashboard', 'pic-pilot') . '</a>.<br>'
-                . '<strong>' . esc_html__('Note:', 'pic-pilot') . '</strong> '
-                . esc_html__('Free TinyPNG accounts are limited to 500 images per month and 5MB per image.', 'pic-pilot')
-                . '</div>';
-        }
-    }
-
-    public static function render_png_engine_dropdown($args) {
-        $options = get_option('pic_pilot_options', []);
-        $selected = $options['png_engine'] ?? '';
-        echo "<select id='png_engine' name='pic_pilot_options[png_engine]'>";
-        echo "<option value='' disabled " . (empty($selected) ? 'selected' : '') . ">" . esc_html__('Choose your preferred API…', 'pic-pilot') . "</option>";
-        echo "<option value='tinypng'" . selected($selected, 'tinypng', false) . ">" . esc_html__('TinyPNG (Recommended)', 'pic-pilot') . "</option>";
-        // For future engines:
-        // echo "<option value='future_engine' disabled>" . esc_html__('Other Engine (Coming soon)', 'pic-pilot') . "</option>";
-        echo "</select>";
     }
 
 
@@ -315,5 +283,58 @@ class SettingsPage {
         echo "<option value='80'" . selected($selected, '80', false) . ">" . __('Good (80)', 'pic-pilot') . "</option>";
         echo "<option value='60'" . selected($selected, '60', false) . ">" . __('Maximum Savings (60)', 'pic-pilot') . "</option>";
         echo "</select>";
+    }
+    public static function tinypng_status_notice() {
+        $options = get_option('pic_pilot_options', []);
+        $api_key = $options['tinypng_api_key'] ?? '';
+        if (empty($api_key)) return '';
+
+        $status = get_transient('pic_pilot_tinypng_status');
+        if (!$status) {
+            $response = wp_remote_get(
+
+                'https://api.tinify.com/account',
+                [
+                    'headers' => [
+                        'Authorization' => 'Basic ' . base64_encode('api:' . $api_key)
+                    ],
+                    'timeout' => 8,
+                ]
+            );
+            error_log('TinyPNG Debug Response: ' . print_r($response, true));
+
+
+            if (is_wp_error($response)) {
+                $status = ['success' => false, 'error' => $response->get_error_message()];
+            } else {
+                $code = wp_remote_retrieve_response_code($response);
+                $body = json_decode(wp_remote_retrieve_body($response), true);
+                if ($code == 200 && isset($body['compression_count'])) {
+                    $status = [
+                        'success' => true,
+                        'count' => intval($body['compression_count']),
+                        'email' => $body['account']['email'] ?? '',
+                    ];
+                } else {
+                    $err = $body['message'] ?? __('Invalid API key or unknown error.', 'pic-pilot');
+                    $status = ['success' => false, 'error' => $err];
+                }
+            }
+            // Cache for 10 min
+            set_transient('pic_pilot_tinypng_status', $status, 10 * MINUTE_IN_SECONDS);
+        }
+
+        if ($status['success']) {
+            $quota = 500; // Free TinyPNG quota
+            $count = $status['count'];
+            $style = ($count >= 480) ? 'color:orange;' : 'color:green;';
+            $warn = ($count >= 480) ? ' ⚠️ ' . esc_html__('Approaching monthly limit!', 'pic-pilot') : '';
+            return "<div class='pic-pilot-api-status' style='$style;margin-top:5px;'>" .
+                esc_html__('✅ TinyPNG key valid. ', 'pic-pilot') .
+                sprintf(esc_html__('%d of %d compressions used this month.', 'pic-pilot'), $count, $quota) .
+                $warn . "</div>";
+        } else {
+            return "<div class='pic-pilot-api-status' style='color:red;margin-top:5px;'>❌ " . esc_html($status['error']) . "</div>";
+        }
     }
 }

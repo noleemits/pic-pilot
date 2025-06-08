@@ -22,16 +22,28 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Toggle display of TinyPNG section based on PNG engine select
-    const pngEngineSelect = document.getElementById('png_engine');
-    const tinypngSection = document.getElementById('pic-pilot-tinypng-section');
-    function toggleTinypngSection() {
-        if (pngEngineSelect && tinypngSection) {
-            tinypngSection.style.display = (pngEngineSelect.value === 'tinypng') ? '' : 'none';
+    // Function to toggle TinyPNG section visibility
+    function toggleTinyPNGSection() {
+        const pngEngineSelect = document.getElementById('png_engine');
+        const tinyPNGSection = document.querySelector('.pic-pilot-tinypng-section');
+
+        if (pngEngineSelect && tinyPNGSection) {
+            if (pngEngineSelect.value === 'tinypng') {
+                tinyPNGSection.style.display = 'block';
+            } else {
+                tinyPNGSection.style.display = 'none';
+            }
         }
     }
+
+    // Initial toggle on page load
+    toggleTinyPNGSection();
+
+    // Toggle when dropdown changes
+    const pngEngineSelect = document.getElementById('png_engine');
     if (pngEngineSelect) {
-        pngEngineSelect.addEventListener('change', toggleTinypngSection);
-        toggleTinypngSection(); // Set initial state
+        pngEngineSelect.addEventListener('change', toggleTinyPNGSection);
     }
+
 });
+

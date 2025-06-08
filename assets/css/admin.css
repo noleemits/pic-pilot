@@ -82,3 +82,24 @@
     background-color: #ffffff;
     padding: 1rem;
 }
+
+.pic-pilot-tinypng-section {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.pic-pilot-tinypng-api-row {
+    margin-bottom: 15px;
+}
+
+.pic-pilot-tinypng-jpeg-row {
+    clear: both;
+    padding-top: 10px;
+}
+
+.pic-pilot-tinypng-jpeg-row input[type="checkbox"] {
+    margin-right: 8px;
+}
