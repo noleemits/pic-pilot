@@ -227,6 +227,16 @@ class SettingsPage {
             ['label_for' => 'auto_optimize_uploads']
         );
 
+        //Enable logging
+        add_settings_field(
+            'enable_logging',
+            __('Enable Logging', 'pic-pilot'),
+            [self::class, 'render_checkbox'],
+            'pic-pilot',
+            'pic_pilot_main',
+            ['label_for' => 'enable_logging']
+        );
+
         // Section for Compression Engines
         add_settings_section(
             'pic_pilot_compression_engines',
