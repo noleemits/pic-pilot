@@ -11,7 +11,7 @@ class EngineRouter {
 
 
         if (strpos($mime, 'png') !== false) {
-            if (!empty($settings['enable_tinypng']) && !empty($settings['tinypng_api_key'])) {
+            if (!empty($settings['png_engine']) && !empty($settings['tinypng_api_key'])) {
                 Logger::log("🔌 Routing PNG to TinyPNG engine");
                 return new \PicPilot\Compressor\External\TinyPngCompressor();
             }

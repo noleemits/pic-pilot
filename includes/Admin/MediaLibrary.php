@@ -128,16 +128,8 @@ Register new column
         }
 
         // Compress thumbnails
-        $meta = wp_get_attachment_metadata($attachment_id);
-        if (!empty($meta['sizes']) && is_array($meta['sizes'])) {
-            foreach ($meta['sizes'] as $size => $info) {
-                $thumb_path = path_join(dirname($file_path), $info['file']);
-                if (file_exists($thumb_path)) {
-                    $thumb_result = $compressor->compress($thumb_path);
-                    $result['saved'] += $thumb_result['saved'] ?? 0;
-                }
-            }
-        }
+        $total_saved = \PicPilot\Utils::compress_thumbnails($attachment_id, $compressor, $file_path);
+
 
         // Save status for Media Library column
         if ($result['success']) {

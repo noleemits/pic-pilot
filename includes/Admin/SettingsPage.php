@@ -187,6 +187,26 @@ class SettingsPage {
             'pic-pilot'
         );
 
+        // Resize on upload checkbox
+        add_settings_field(
+            'resize_on_upload',
+            __('Resize large images on upload', 'pic-pilot'),
+            [self::class, 'render_checkbox'],
+            'pic-pilot',
+            'pic_pilot_main',
+            ['label_for' => 'resize_on_upload']
+        );
+
+        // Max width field (only shows if resize enabled, see JS below)
+        add_settings_field(
+            'resize_max_width',
+            __('Maximum width (pixels)', 'pic-pilot'),
+            [self::class, 'render_resize_width_input'],
+            'pic-pilot',
+            'pic_pilot_main',
+            ['label_for' => 'resize_max_width']
+        );
+
         // Enable JPEG Compression
         add_settings_field(
             'enable_jpeg',
@@ -219,12 +239,12 @@ class SettingsPage {
 
         // Automatically Optimize Images on Upload
         add_settings_field(
-            'auto_optimize_uploads',
+            'optimize_on_upload',
             __('Compress on Upload', 'pic-pilot'),
             [self::class, 'render_checkbox'],
             'pic-pilot',
             'pic_pilot_main',
-            ['label_for' => 'auto_optimize_uploads']
+            ['label_for' => 'optimize_on_upload']
         );
 
         //Enable logging
@@ -290,6 +310,15 @@ class SettingsPage {
             'pic-pilot'
         );
     }
+    public static function render_resize_width_input($args) {
+        $options = get_option('pic_pilot_options', []);
+        $resize_enabled = !empty($options['resize_on_upload']);
+        $value = esc_attr($options['resize_max_width'] ?? '2048');
+        $style = $resize_enabled ? '' : 'display:none;';
+        echo "<input type='number' min='300' max='8000' step='1' id='{$args['label_for']}' name='pic_pilot_options[{$args['label_for']}]' value='$value' style='width:80px;$style' />";
+        echo '<span style="margin-left:8px;color:#777;">' . esc_html__('Leave blank to use WordPress default (2048)', 'pic-pilot') . '</span>';
+    }
+
 
     public static function render_text_input($args) {
         $options = get_option('pic_pilot_options', []);
@@ -323,5 +352,11 @@ class SettingsPage {
         $options = get_option('pic_pilot_options', []);
         $checked = isset($options[$args['label_for']]) ? checked(1, $options[$args['label_for']], false) : '';
         echo "<input type='checkbox' id='{$args['label_for']}' name='pic_pilot_options[{$args['label_for']}]' value='1' $checked />";
+        // Add explanation below the resize checkbox
+        if ($args['label_for'] === 'resize_on_upload') {
+            echo '<div class="pic-pilot-resize-description" style="margin-top:8px;color:#555;">'
+                . esc_html__("WordPress automatically scales down very large images, but the original full-size image is kept and often not optimized. When enabled, Pic Pilot will resize any image above the WordPress maximum size, making sure your original upload is optimized and saving disk space. You can also set your own maximum width (pixels); leave blank to use the WordPress default.", 'pic-pilot')
+                . '</div>';
+        }
     }
 }

@@ -47,3 +47,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
+document.addEventListener('DOMContentLoaded', function () {
+    // Toggle visibility of the resize max width input based on the checkbox
+    var resizeCheckbox = document.getElementById('resize_on_upload');
+    var maxWidthInput = document.getElementById('resize_max_width');
+    function toggleMaxWidth() {
+        if (resizeCheckbox && maxWidthInput) {
+            maxWidthInput.style.display = resizeCheckbox.checked ? '' : 'none';
+        }
+    }
+    if (resizeCheckbox && maxWidthInput) {
+        resizeCheckbox.addEventListener('change', toggleMaxWidth);
+        toggleMaxWidth();
+    }
+});

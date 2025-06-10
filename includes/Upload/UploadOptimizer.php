@@ -5,7 +5,9 @@ namespace PicPilot\Upload;
 use PicPilot\Settings;
 use PicPilot\Logger;
 use PicPilot\Compressor\EngineRouter;
-use PicPilot\Backup\BackupManager;
+use PicPilot\Backup\BackupService;
+use PicPilot\Utils;
+
 
 defined('ABSPATH') || exit;
 
@@ -14,11 +16,11 @@ class UploadOptimizer {
     protected $backup;
     protected $logger;
 
-    public function __construct(EngineRouter $router, BackupManager $backup, Logger $logger) {
+    public function __construct(EngineRouter $router, Logger $logger) {
         $this->router = $router;
-        $this->backup = $backup;
         $this->logger = $logger;
     }
+
 
     /**
      * Register the upload optimization hook.
@@ -38,6 +40,11 @@ class UploadOptimizer {
         if (!Settings::get('optimize_on_upload')) {
             return $metadata;
         }
+        //Check settings to see if resize is enabled
+        $options = \PicPilot\Settings::all();
+        $resize_enabled = !empty($options['resize_on_upload']);
+        $max_width = intval($options['resize_max_width'] ?? 2048);
+
 
         $path = get_attached_file($attachmentId);
 
@@ -46,30 +53,78 @@ class UploadOptimizer {
         }
 
         try {
-            // Backup original file
-            $this->backup->backup($attachmentId);
+            //check max widhth and resize if necessary
+            if ($resize_enabled && $max_width > 0) {
+                $original_path = $path; // BEFORE resize happens
 
-            // Route image to appropriate compressor
-            $result = $this->router->compress($attachmentId, $path);
+                $editor = wp_get_image_editor($path);
+                if (!is_wp_error($editor)) {
+                    $size = $editor->get_size();
+                    if ($size['width'] > $max_width) {
+                        $editor->resize($max_width, null, false);
+                        $editor->save($path);
 
-            // Save metadata and log if compression succeeded
-            if ($result && isset($result['bytes_saved'])) {
+                        // ✅ Clean up original if different
+                        if ($original_path !== get_attached_file($attachmentId)) {
+                            @unlink($original_path);
+                            \PicPilot\Logger::log("🧹 Deleted original pre-resize upload: " . basename($original_path));
+                        }
+                    }
+                }
+            }
+
+            //After resizing, clean bigger images than the max width
+            foreach ($metadata['sizes'] as $size => $info) {
+                $thumb_path = path_join(dirname($path), $info['file']);
+
+                if (file_exists($thumb_path)) {
+                    [$width, $height] = getimagesize($thumb_path);
+
+                    if ($width > $max_width) {
+                        unlink($thumb_path); // remove too-large thumbnail
+                        $this->logger->log("🧹 Removed oversized thumbnail [$size]: $info[file] ($width px)");
+                        unset($metadata['sizes'][$size]); // remove from metadata
+                    }
+                }
+            }
+
+            // Create a backup before compression
+            \PicPilot\Backup\BackupService::create_backup($attachmentId);
+
+            //Delete oversized images
+            $metadata = Utils::clean_oversized_images($metadata, $path, $max_width);
+
+            $mime = mime_content_type($path);
+            $compressor = $this->router::get_compressor($mime);
+            $main_result = $compressor->compress($path);
+
+            // Compress all thumbnails and sum up saved bytes
+            $thumbs_saved = \PicPilot\Utils::compress_thumbnails($attachmentId, $compressor, $path);
+
+            $total_saved = ($main_result['saved'] ?? 0) + $thumbs_saved;
+
+            // Save meta/status as before
+            if ($main_result && $total_saved > 0) {
                 update_post_meta($attachmentId, '_pic_pilot_optimized', true);
-                update_post_meta($attachmentId, '_pic_pilot_bytes_saved', (int) $result['bytes_saved']);
-                update_post_meta($attachmentId, '_pic_pilot_engine', sanitize_text_field($result['engine'] ?? 'unknown'));
+                update_post_meta($attachmentId, '_pic_pilot_bytes_saved', (int)$total_saved);
+                update_post_meta($attachmentId, '_pic_pilot_engine', sanitize_text_field($main_result['engine'] ?? 'unknown'));
+                update_post_meta($attachmentId, '_pic_pilot_optimization', [
+                    'status' => 'optimized',
+                    'saved'  => (int)$total_saved,
+                    'timestamp' => time(),
+                ]);
+                update_post_meta($attachmentId, '_pic_pilot_optimized_version', time());
 
-                Logger::log("Compressed on upload", [
+                $this->logger->log("✅ Compressed on upload", [
                     'attachment_id' => $attachmentId,
-                    'engine' => $result['engine'] ?? 'unknown',
-                    'bytes_saved' => $result['bytes_saved'] ?? 0,
+                    'engine' => $main_result['engine'] ?? 'unknown',
+                    'bytes_saved' => $total_saved,
                 ]);
             }
         } catch (\Throwable $e) {
-            Logger::log("Upload compression failed", [
-                'attachment_id' => $attachmentId,
-                'error' => $e->getMessage(),
-            ]);
+            $this->logger->log("❌ Upload compression failed: " . $e->getMessage() . "\n" . $e->getTraceAsString());
         }
+
 
         return $metadata;
     }

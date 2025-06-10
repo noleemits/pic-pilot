@@ -12,11 +12,13 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PicPilot\Admin\MediaLibrary;
 //use backup manger
 use PicPilot\Compressor\EngineRouter;
-use PicPilot\Backup\BackupManager;
+use PicPilot\Backup\BackupService;
 use PicPilot\Admin\Settings;
+use PicPilot\Backup\BackupManager;
 use PicPilot\Upload\UploadOptimizer;
 use PicPilot\admin\SettingsPage;
 use PicPilot\Logger;
+
 
 
 \PicPilot\Admin\SettingsPage::init();
@@ -24,7 +26,6 @@ use PicPilot\Logger;
 
 $uploadOptimizer = new UploadOptimizer(
     new EngineRouter(),
-    new BackupManager(),
     new Logger()
 );
 $uploadOptimizer->register();
@@ -92,6 +93,3 @@ add_action('delete_attachment', function ($attachment_id) {
         \PicPilot\Backup\BackupService::delete_backup($attachment_id);
     }
 });
-
-$uploadOptimizer = new UploadOptimizer(new EngineRouter(), new BackupManager(), new Logger());
-$uploadOptimizer->register();
