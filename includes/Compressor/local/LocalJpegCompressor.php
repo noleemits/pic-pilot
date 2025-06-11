@@ -18,7 +18,16 @@ class LocalJpegCompressor implements CompressorInterface {
 
         try {
             $original_size = filesize($file_path);
-
+            if (!class_exists('Imagick')) {
+                Logger::log("❌ Imagick not available on this server.");
+                return [
+                    'success' => false,
+                    'original' => 0,
+                    'optimized' => 0,
+                    'saved' => 0,
+                    'error' => 'Imagick not available'
+                ];
+            }
             $image = new \Imagick($file_path);
             $image->setImageCompression(\Imagick::COMPRESSION_JPEG);
             $image->setImageCompressionQuality($quality);
