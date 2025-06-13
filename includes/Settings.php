@@ -19,6 +19,12 @@ class Settings {
         return !empty($options['enable_backup']);
     }
 
+    //Function to re-use auto optimize uploads check
+    public static function is_optimize_on_upload_enabled(): bool {
+        $options = self::all();
+        return !empty($options['optimize_on_upload']);
+    }
+
     public static function all() {
         return wp_parse_args(get_option('pic_pilot_options', []), self::$defaults);
     }

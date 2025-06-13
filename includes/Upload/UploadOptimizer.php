@@ -37,9 +37,12 @@ class UploadOptimizer {
      * @return array
      */
     public function handleUpload($metadata, $attachmentId) {
-        if (!Settings::get('optimize_on_upload')) {
+        Logger::log("📦 optimize_on_upload value = " . var_export(Settings::get('optimize_on_upload'), true));
+
+        if (!Settings::is_optimize_on_upload_enabled()) {
             return $metadata;
         }
+
         //Check settings to see if resize is enabled
         $options = \PicPilot\Settings::all();
         $resize_enabled = !empty($options['resize_on_upload']);
