@@ -1,5 +1,7 @@
 {
-"autoload": {
-    "classmap": ["includes/", "src/"]
-}
+  "autoload": {
+    "psr-4": {
+      "PicPilot\\": "includes/"
+    }
+  }
 }

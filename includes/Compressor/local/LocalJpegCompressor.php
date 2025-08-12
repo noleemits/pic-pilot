@@ -27,17 +27,25 @@ class LocalJpegCompressor implements CompressorInterface {
                 'success' => false,
                 'original' => $original_size,
                 'optimized' => $original_size,
-                'saved' => 0
+                'saved' => 0,
             ];
         }
 
         try {
             $editor->set_quality($quality);
 
-            // Strip metadata, if possible
-            // if (method_exists($editor, 'strip_meta')) {
-            //     $editor->strip_meta();
-            // }
+            if (Settings::is_enabled('strip_metadata')) {
+                \PicPilot\Utils::strip_metadata($file_path);
+                $size_before = filesize($file_path);
+                \PicPilot\Utils::strip_metadata($file_path);
+                clearstatcache(true, $file_path);
+                $size_after = filesize($file_path);
+                $saved = max($size_before - $size_after, 0);
+                Logger::log("🧼 Metadata stripped: Saved {$saved} bytes from " . basename($file_path));
+            } else {
+                Logger::log("🧼 Metadata stripping disabled, keeping metadata for: " . basename($file_path));
+            }
+
 
             $result = $editor->save($file_path);
 
@@ -47,7 +55,8 @@ class LocalJpegCompressor implements CompressorInterface {
                     'success' => false,
                     'original' => $original_size,
                     'optimized' => $original_size,
-                    'saved' => 0
+                    'saved' => 0,
+
                 ];
             }
 
@@ -61,7 +70,8 @@ class LocalJpegCompressor implements CompressorInterface {
                 'success' => true,
                 'original' => $original_size,
                 'optimized' => $optimized_size,
-                'saved' => $saved
+                'saved' => $saved,
+
             ];
         } catch (\Throwable $e) {
             Logger::log("❌ JPEG compression failed: " . $e->getMessage());
@@ -69,7 +79,8 @@ class LocalJpegCompressor implements CompressorInterface {
                 'success' => false,
                 'original' => $original_size,
                 'optimized' => $original_size,
-                'saved' => 0
+                'saved' => 0,
+
             ];
         }
     }

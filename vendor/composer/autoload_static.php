@@ -6,28 +6,29 @@ namespace Composer\Autoload;
 
 class ComposerStaticInitd751713988987e9331980363e24189ce
 {
+    public static $prefixLengthsPsr4 = array (
+        'P' => 
+        array (
+            'PicPilot\\' => 9,
+        ),
+    );
+
+    public static $prefixDirsPsr4 = array (
+        'PicPilot\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/includes',
+        ),
+    );
+
     public static $classMap = array (
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
-        'PicPilot\\Admin\\BulkOptimize' => __DIR__ . '/../..' . '/includes/Admin/BulkOptimize.php',
-        'PicPilot\\Admin\\MediaLibrary' => __DIR__ . '/../..' . '/includes/Admin/MediaLibrary.php',
-        'PicPilot\\Admin\\SettingsPage' => __DIR__ . '/../..' . '/includes/Admin/SettingsPage.php',
-        'PicPilot\\Backup\\BackupManager' => __DIR__ . '/../..' . '/src/backup/BackupManager.php',
-        'PicPilot\\Backup\\BackupService' => __DIR__ . '/../..' . '/src/backup/BackupService.php',
-        'PicPilot\\Compressor\\CompressorInterface' => __DIR__ . '/../..' . '/includes/Compressor/CompressorInterface.php',
-        'PicPilot\\Compressor\\EngineRouter' => __DIR__ . '/../..' . '/includes/Compressor/EngineRouter.php',
-        'PicPilot\\Compressor\\External\\TinyPngCompressor' => __DIR__ . '/../..' . '/includes/Compressor/External/TinyPngCompressor.php',
-        'PicPilot\\Compressor\\Local\\LocalJpegCompressor' => __DIR__ . '/../..' . '/includes/Compressor/local/LocalJpegCompressor.php',
-        'PicPilot\\Compressor\\PngCompressorPlaceholder' => __DIR__ . '/../..' . '/includes/Compressor/PngCompressorPlaceholder.php',
-        'PicPilot\\Logger' => __DIR__ . '/../..' . '/includes/Logger.php',
-        'PicPilot\\Optimizer' => __DIR__ . '/../..' . '/includes/Optimizer.php',
-        'PicPilot\\Settings' => __DIR__ . '/../..' . '/includes/Settings.php',
-        'PicPilot\\Upload\\UploadOptimizer' => __DIR__ . '/../..' . '/includes/Upload/UploadOptimizer.php',
-        'PicPilot\\Utils' => __DIR__ . '/../..' . '/includes/Utils.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
+            $loader->prefixLengthsPsr4 = ComposerStaticInitd751713988987e9331980363e24189ce::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitd751713988987e9331980363e24189ce::$prefixDirsPsr4;
             $loader->classMap = ComposerStaticInitd751713988987e9331980363e24189ce::$classMap;
 
         }, null, ClassLoader::class);

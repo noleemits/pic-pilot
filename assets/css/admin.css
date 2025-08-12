@@ -1,3 +1,91 @@
+/* Accordion Styling for Settings Sections */
+.pic-pilot-settings form h2 {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 12px 16px;
+    margin: 16px 0 0 0;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    border-radius: 4px 4px 0 0;
+}
+
+.pic-pilot-settings form h2:hover {
+    background: #e9ecef;
+}
+
+.pic-pilot-settings form h2:first-of-type {
+    margin-top: 0;
+}
+
+.pic-pilot-settings form h2::after {
+    content: "▼";
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: transform 0.2s ease;
+    font-size: 12px;
+}
+
+.pic-pilot-settings form h2.collapsed::after {
+    transform: translateY(-50%) rotate(-90deg);
+}
+
+/* Wrapper for each section's content */
+.pic-pilot-section-content {
+    border: 1px solid #ddd;
+    border-top: none;
+    margin: 0 0 16px 0;
+    border-radius: 0 0 4px 4px;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+/* Hide section content when collapsed */
+.pic-pilot-section-content.collapsed {
+    display: none !important;
+}
+
+/* Style individual content elements within sections */
+.pic-pilot-section-content p {
+    background: #f8f9fa;
+    color: #666;
+    font-style: italic;
+    margin: 0;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.pic-pilot-section-content .pic-pilot-storage-tip,
+.pic-pilot-section-content .notice {
+    margin: 0;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.pic-pilot-section-content table {
+    margin: 0 !important;
+    background: white;
+    width: calc(100% - 32px) !important;
+    margin: 16px !important;
+    border: none !important;
+}
+
+.pic-pilot-section-content table th,
+.pic-pilot-section-content table td {
+    padding: 12px 8px !important;
+    border: none !important;
+}
+
+.pic-pilot-section-content table tr {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.pic-pilot-section-content table tr:last-child {
+    border-bottom: none;
+}
+
 .pic-pilot-status {
     display: inline-block;
     padding: 2px 6px;
@@ -102,4 +190,451 @@
 
 .pic-pilot-tinypng-jpeg-row input[type="checkbox"] {
     margin-right: 8px;
+}
+
+.pp-log-row {
+    border-bottom: 1px solid #e0e0e0;
+    padding: 12px 0;
+    font-size: 14px;
+}
+
+.pp-log-row strong {
+    color: #222;
+}
+
+.pp-log-row small {
+    color: #999;
+}
+
+.pp-log-row .log-label {
+    font-weight: 500;
+    margin-right: 6px;
+}
+
+/* Tooltip Styles */
+.pic-pilot-has-tooltip {
+    cursor: help;
+    border-bottom: 1px dotted #999;
+}
+
+.pic-pilot-tooltip-popup {
+    background: #2c3338;
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    max-width: 320px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.pic-pilot-tooltip .tooltip-header {
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: #fff;
+    border-bottom: 1px solid #555;
+    padding-bottom: 4px;
+}
+
+.pic-pilot-tooltip .tooltip-section {
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+}
+
+.pic-pilot-tooltip .tooltip-section:last-child {
+    margin-bottom: 0;
+}
+
+.pic-pilot-tooltip .tooltip-label {
+    font-weight: 600;
+    color: #ccc;
+    margin-bottom: 2px;
+}
+
+.pic-pilot-tooltip .tooltip-value {
+    color: #fff;
+    margin-left: 8px;
+}
+
+.pic-pilot-tooltip .tooltip-thumb-row {
+    padding: 1px 0;
+    font-size: 11px;
+    margin-left: 8px;
+}
+
+.pic-pilot-tooltip .thumb-name {
+    font-weight: 600;
+    color: #9fd3ff;
+}
+
+.pic-pilot-tooltip .thumb-dims {
+    color: #aaa;
+    font-size: 10px;
+}
+
+.pic-pilot-tooltip .thumb-savings {
+    color: #7fb069;
+    font-weight: 600;
+}
+
+/* Resize Settings Enhancements */
+.pp-resize-conditional {
+    margin-left: 25px;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-left: 3px solid #0073aa;
+    border-radius: 0 4px 4px 0;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.pp-resize-conditional input[type="number"] {
+    width: 120px;
+}
+
+.pp-resize-conditional .description {
+    font-style: italic;
+    color: #666;
+    margin-top: 5px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Settings section improvements */
+#pic_pilot_resize_settings h2 {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+    color: #23282d;
+}
+
+#pic_pilot_resize_settings p {
+    color: #666;
+    font-style: italic;
+    margin-bottom: 20px;
+}
+
+/* Better spacing for checkboxes in resize section */
+th[scope="row"] {
+    padding-top: 15px;
+    padding-bottom: 15px;
+}
+
+/* Visual enhancement for conditional fields */
+.pp-resize-conditional:before {
+    content: "↳";
+    color: #0073aa;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+/* Storage tip styling */
+.pic-pilot-storage-tip {
+    background: #e7f3ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.pic-pilot-storage-tip .dashicons {
+    color: #0073aa;
+    margin-right: 5px;
+    margin-top: 1px;
+    float: left;
+}
+
+.pic-pilot-storage-tip strong {
+    color: #0073aa;
+}
+
+/* Resize intro section */
+.pic-pilot-resize-intro {
+    margin-bottom: 15px;
+}
+
+.pic-pilot-resize-intro > p {
+    margin-bottom: 8px;
+}
+
+/* Settings Dependencies Styling */
+.pic-pilot-disabled-message {
+    font-size: 12px !important;
+    color: #999 !important;
+    font-style: italic !important;
+    margin-top: 4px !important;
+    padding: 8px 12px;
+    background: #f9f9f9;
+    border-left: 3px solid #ccc;
+    border-radius: 0 4px 4px 0;
+}
+
+/* Visual styling for disabled settings */
+input[disabled],
+select[disabled],
+textarea[disabled] {
+    background-color: #f7f7f7 !important;
+    color: #999 !important;
+    cursor: not-allowed !important;
+}
+
+/* Section heading state indicators */
+.pic-pilot-settings h2 .section-state {
+    font-size: 14px;
+    font-weight: normal;
+    margin-left: 8px;
+}
+
+.pic-pilot-settings h2 .section-state.active {
+    color: #007cba;
+    font-weight: 600;
+}
+
+.pic-pilot-settings h2 .section-state.disabled {
+    color: #999;
+    font-weight: normal;
+}
+
+/* Enhanced visual feedback for mode-specific sections */
+.pic-pilot-settings .mode-section-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.pic-pilot-settings .mode-section-disabled h2 {
+    background: #f0f0f0 !important;
+    color: #999 !important;
+}
+
+.pic-pilot-settings .mode-section-active h2 {
+    background: #e7f3ff !important;
+    border-color: #007cba !important;
+}
+
+/* Upload mode selection enhancement */
+.pic-pilot-radio-group {
+    margin: 16px 0;
+}
+
+.pic-pilot-radio-option {
+    display: block !important;
+    margin-bottom: 12px !important;
+    padding: 12px !important;
+    border: 2px solid #ddd !important;
+    border-radius: 6px !important;
+    background: #fff !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.pic-pilot-radio-option:hover {
+    border-color: #0073aa !important;
+    background: #f0f8ff !important;
+}
+
+.pic-pilot-radio-option input[type="radio"]:checked {
+    /* Add a custom checked state */
+}
+
+.pic-pilot-radio-option:has(input[type="radio"]:checked) {
+    border-color: #007cba !important;
+    background: #e7f3ff !important;
+    color: #007cba !important;
+    font-weight: 600 !important;
+}
+
+/* Fallback for browsers that don't support :has() */
+.pic-pilot-radio-option input[type="radio"]:checked ~ * {
+    color: #007cba;
+    font-weight: 600;
+}
+
+.pic-pilot-radio-option small {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+/* Dependency warning styling */
+.pic-pilot-dependency-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #856404;
+}
+
+.pic-pilot-dependency-warning::before {
+    content: "⚠ ";
+    font-weight: bold;
+}
+
+/* Backup Manager Enhancements */
+.pic-pilot-backup-badge {
+    display: inline-block;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    margin-right: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tablenav.top {
+    margin-bottom: 15px;
+}
+
+.tablenav .actions {
+    padding: 8px 0;
+}
+
+.tablenav .alignright {
+    color: #666;
+    font-size: 13px;
+}
+
+/* Search and filter form styling */
+.tablenav .actions input[type="search"] {
+    width: 200px;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.tablenav .actions select {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    background: white;
+}
+
+/* Table styling improvements */
+.wp-list-table.striped > tbody > :nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+.wp-list-table .column-cb {
+    width: 2.2em;
+    padding: 8px 0 0 3px;
+    text-align: center;
+}
+
+.wp-list-table .check-column input[type="checkbox"] {
+    margin: 0;
+}
+
+.wp-list-table .check-column input[type="checkbox"]:indeterminate::before {
+    content: "―";
+    float: left;
+    display: inline-block;
+    vertical-align: middle;
+    width: 16px;
+    font: normal 21px/1 dashicons;
+    color: #1d2327;
+    speak: never;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Results counter styling */
+.backup-results-info {
+    color: #666;
+    font-size: 13px;
+    font-style: italic;
+    margin: 8px 0;
+    padding: 6px 10px;
+    background: #f8f9fa;
+    border-left: 3px solid #0073aa;
+    border-radius: 0 3px 3px 0;
+}
+
+/* Bulk actions dropdown */
+#bulk-action-selector-top {
+    min-width: 140px;
+}
+
+/* Enhanced pagination */
+.tablenav-pages {
+    margin: 0;
+}
+
+.tablenav-pages .displaying-num {
+    margin-right: 10px;
+    color: #646970;
+    font-size: 13px;
+}
+
+/* Mobile responsiveness */
+@media screen and (max-width: 782px) {
+    .tablenav .actions input[type="search"] {
+        width: 150px;
+        margin-bottom: 5px;
+    }
+    
+    .tablenav .actions select {
+        margin-bottom: 5px;
+        width: 120px;
+    }
+    
+    .tablenav .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .backup-results-info {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+}
+
+/* Loading state styles (for future AJAX implementation) */
+.pic-pilot-loading {
+    opacity: 0.6;
+    pointer-events: none;
+    position: relative;
+}
+
+.pic-pilot-loading::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    z-index: 10;
+}
+
+/* Success/Error message styling improvements */
+.notice.pic-pilot-bulk-notice {
+    margin: 15px 0;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.notice.pic-pilot-bulk-notice p {
+    margin: 0;
+    font-weight: 500;
+}
+
+/* Form enhancements */
+#bulk-backup-form .button.action {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+
+#bulk-backup-form .button.action:hover {
+    background: #135e96;
+    border-color: #135e96;
 }

@@ -7,19 +7,4 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
-    'PicPilot\\Admin\\BulkOptimize' => $baseDir . '/includes/Admin/BulkOptimize.php',
-    'PicPilot\\Admin\\MediaLibrary' => $baseDir . '/includes/Admin/MediaLibrary.php',
-    'PicPilot\\Admin\\SettingsPage' => $baseDir . '/includes/Admin/SettingsPage.php',
-    'PicPilot\\Backup\\BackupManager' => $baseDir . '/src/backup/BackupManager.php',
-    'PicPilot\\Backup\\BackupService' => $baseDir . '/src/backup/BackupService.php',
-    'PicPilot\\Compressor\\CompressorInterface' => $baseDir . '/includes/Compressor/CompressorInterface.php',
-    'PicPilot\\Compressor\\EngineRouter' => $baseDir . '/includes/Compressor/EngineRouter.php',
-    'PicPilot\\Compressor\\External\\TinyPngCompressor' => $baseDir . '/includes/Compressor/External/TinyPngCompressor.php',
-    'PicPilot\\Compressor\\Local\\LocalJpegCompressor' => $baseDir . '/includes/Compressor/local/LocalJpegCompressor.php',
-    'PicPilot\\Compressor\\PngCompressorPlaceholder' => $baseDir . '/includes/Compressor/PngCompressorPlaceholder.php',
-    'PicPilot\\Logger' => $baseDir . '/includes/Logger.php',
-    'PicPilot\\Optimizer' => $baseDir . '/includes/Optimizer.php',
-    'PicPilot\\Settings' => $baseDir . '/includes/Settings.php',
-    'PicPilot\\Upload\\UploadOptimizer' => $baseDir . '/includes/Upload/UploadOptimizer.php',
-    'PicPilot\\Utils' => $baseDir . '/includes/Utils.php',
 );

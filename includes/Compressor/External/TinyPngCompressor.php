@@ -10,6 +10,8 @@ class TinyPngCompressor implements CompressorInterface {
     public function compress($file_path): array {
         $settings = Settings::get();
         $api_key = $settings['tinypng_api_key'] ?? '';
+        Logger::log('🧪 TinyPNG optimize() called for: ' . $file_path);
+        Logger::log('📄 MIME: ' . mime_content_type($file_path));
 
         $original_size = filesize($file_path);
         // Check if the file size exceeds the 5MB limit
@@ -123,7 +125,8 @@ class TinyPngCompressor implements CompressorInterface {
             'success' => true,
             'original' => $original_size,
             'optimized' => $new_size,
-            'saved' => $saved
+            'saved' => $saved,
+            'engine' => 'Tinypng',
         ];
     }
 
@@ -138,6 +141,7 @@ class TinyPngCompressor implements CompressorInterface {
             'original' => $original_size,
             'optimized' => $original_size,
             'saved' => 0,
+            'engine' => 'Tinypng',
             'error' => $custom_error // Include custom error message
         ];
     }
