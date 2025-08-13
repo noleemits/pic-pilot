@@ -21,10 +21,11 @@ class SmartBackupManager {
         switch ($operation_type) {
             // Format conversions - always backup (regardless of user setting)
             case 'convert_png_to_jpeg':
+            case 'convert_jpeg_to_png':
             case 'convert_to_webp':
             case 'convert_webp_to_png':
-            case 'convert_jpeg_to_webp':
             case 'convert_webp_to_jpeg':
+            case 'convert_jpeg_to_webp':
                 Logger::log("🔄 Auto-backup required for format conversion: $operation_type");
                 return true;
 
@@ -55,10 +56,11 @@ class SmartBackupManager {
     public static function get_backup_type(string $operation_type): string {
         switch ($operation_type) {
             case 'convert_png_to_jpeg':
+            case 'convert_jpeg_to_png':
             case 'convert_to_webp':
             case 'convert_webp_to_png':
-            case 'convert_jpeg_to_webp':
             case 'convert_webp_to_jpeg':
+            case 'convert_jpeg_to_webp':
                 return self::BACKUP_CONVERSION;
 
             case 'browser_serving_prep':
@@ -201,12 +203,13 @@ class SmartBackupManager {
     private static function get_expiry_days(string $backup_type): int {
         switch ($backup_type) {
             case self::BACKUP_CONVERSION:
+                return 7; // 7 days for conversion backups (shorter to save storage)
             case self::BACKUP_USER:
-                return 30; // 30 days like EWWW
+                return 14; // 14 days for user backups (compression operations)
             case self::BACKUP_SERVING:
                 return 0; // No expiry (needed for serving)
             default:
-                return 30;
+                return 7;
         }
     }
 
@@ -308,7 +311,8 @@ class SmartBackupManager {
         }
         
         $cleaned = 0;
-        $expiry_seconds = 30 * 24 * 60 * 60; // 30 days
+        $expiry_days = self::get_expiry_days($backup_type);
+        $expiry_seconds = $expiry_days * 24 * 60 * 60;
         $now = time();
         
         $directories = glob($type_dir . '*', GLOB_ONLYDIR);
@@ -487,10 +491,11 @@ class SmartBackupManager {
         }
 
         $backup_types = [self::BACKUP_USER, self::BACKUP_CONVERSION, self::BACKUP_SERVING];
-        $expiry_seconds = 30 * 24 * 60 * 60; // 30 days
         $now = time();
 
         foreach ($backup_types as $type) {
+            $expiry_days = self::get_expiry_days($type);
+            $expiry_seconds = $expiry_days * 24 * 60 * 60;
             $type_dir = $backup_base . $type . '/';
             $type_stats = [
                 'directories' => 0,

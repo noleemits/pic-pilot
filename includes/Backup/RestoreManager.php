@@ -33,7 +33,7 @@ class RestoreManager {
         self::register_handler(new CompressionRestoreHandler());
         self::register_handler(new ChainConversionRestoreHandler());
         
-        Logger::log("🔧 RestoreManager initialized with " . count(self::$handlers) . " handlers");
+        // RestoreManager initialized with " . count(self::$handlers) . " handlers
     }
     
     /**

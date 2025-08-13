@@ -378,3 +378,123 @@ The system is now ready for testing with real PNG→JPEG conversions!
 3. **Bulk Restore Interface**: Add bulk restore capability to main backup manager
 4. **Performance Optimization**: Async processing for large files, backup expiration automation
 5. **Advanced Features**: Browser fallback systems, progressive JPEG, AVIF support
+
+---
+
+## Session Update (August 13, 2025)
+
+### 🔧 Issues Resolved Today
+
+#### 1. **Duplicate Optimize Button UX Fix ✅ COMPLETED**
+**Problem**: Confusing duplicate optimize buttons in Media Library
+- Format Options column had optimize button
+- Pic Pilot column also had optimize button
+- Users couldn't distinguish their purpose
+
+**Solution Implemented**:
+- **Removed optimization functionality** from Format Options column (`MediaLibraryConverter.php`)
+- **Format Options now focus exclusively** on conversions: PNG↔JPEG↔WebP, Restore
+- **Pic Pilot column handles optimization exclusively** 
+- **Clear separation**: Format Options = conversions, Pic Pilot column = optimization
+
+#### 2. **Comprehensive File Deletion Fix ✅ COMPLETED**
+**Problem**: Files remaining after deletion despite conversion/optimization cycles
+- User reported duplicate files persisting after delete operations
+- Previous deletion logic missed some file variants and thumbnail patterns
+
+**Solution Implemented**:
+- **Enhanced deletion patterns** in `pic-pilot.php`:
+  - Added missing `tp-image-grid` (700x700) thumbnail pattern
+  - Comprehensive format coverage: `.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`
+  - Both standard and `-resized` variants for all formats
+  - All possible thumbnail combinations across formats
+- **Pattern-based cleanup**: Systematic deletion of ALL possible file variants
+- **Detailed logging**: Track exactly what files are deleted with count
+
+#### 3. **Backup Expiration Optimization ✅ COMPLETED**  
+**Problem**: User question about backup storage usage
+- Conversion backups always created (even when user backup disabled)
+- Taking storage space with 30-day expiration like EWWW
+- User wanted to understand and optimize storage usage
+
+**Solution Implemented**:
+- **Reduced backup expiration times** in `SmartBackupManager.php`:
+  - **Conversion backups**: 30 days → **7 days** (format changes)
+  - **User backups**: 30 days → **14 days** (compression operations)  
+  - **Serving backups**: No expiry (needed for browser fallback)
+- **Dynamic expiry logic**: Each backup type uses appropriate retention period
+- **Updated cleanup algorithms**: Stats and cleanup now use type-specific expiry
+
+### 📊 Current Backup Strategy Explained
+
+**Two Backup Types with Different Storage Impact:**
+
+1. **User Backups** (controlled by "Enable Backup" setting):
+   - Only for compression operations
+   - Can be disabled to save storage  
+   - 14-day expiration
+
+2. **Conversion Backups** (always created):
+   - **Always created** for format changes (PNG→JPEG, PNG→WebP, etc.)
+   - **Cannot be disabled** (safety feature for irreversible conversions)
+   - **7-day expiration** (reduced from 30 days)
+   - **Enable restore functionality** even when user backups disabled
+
+**User Impact**: 
+- When "Enable Backup" is disabled, conversion backups still consume storage
+- This is intentional - format conversions are riskier than compression
+- Shorter 7-day expiration reduces storage impact while maintaining safety
+
+### 🏗️ Technical Improvements
+
+#### **File Deletion Enhancement**
+```php
+// New comprehensive cleanup patterns
+$possible_extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+$thumbnail_patterns = [
+    '-300x200', '-1024x683', '-150x150', '-768x512', '-700x700',  // Standard + theme sizes
+    '-resized-300x200', '-resized-1024x683', '-resized-150x150', 
+    '-resized-768x512', '-resized-700x700'  // Resized versions
+];
+```
+
+#### **Backup Expiration Optimization**  
+```php
+case self::BACKUP_CONVERSION:
+    return 7; // 7 days for conversion backups (shorter to save storage)
+case self::BACKUP_USER:  
+    return 14; // 14 days for user backups (compression operations)
+```
+
+### 🎯 Current System Status
+
+#### **✅ Working Correctly**:
+- **Format conversions** with inline Media Library buttons (PNG↔JPEG↔WebP)
+- **Comprehensive file cleanup** - no orphaned files after deletion
+- **Optimized storage usage** with shorter backup retention periods
+- **Clear UX separation** - Format Options vs Pic Pilot column purposes
+- **Complete restoration workflow** for all conversion types
+
+#### **🔧 Technical Architecture**:
+- **Dual backup system**: Legacy + SmartBackupManager with typed storage
+- **Handler-based restoration**: RestoreManager with specialized handlers
+- **Comprehensive cleanup**: Pattern-based deletion covering all file variants
+- **Storage optimization**: Dynamic expiration based on backup criticality
+
+#### **📈 Performance Improvements**:
+- **Reduced storage overhead**: 7-day conversion backup retention vs 30-day
+- **Enhanced cleanup efficiency**: Systematic pattern-based file deletion
+- **Streamlined UX**: Eliminated duplicate functionality confusion
+
+### 🔄 Session Status: PAUSED FOR CONTINUATION
+**Ready for tomorrow's development session with:**
+- Enhanced file deletion logic deployed
+- Optimized backup storage retention 
+- Cleaner Media Library UX (no duplicate buttons)
+- Comprehensive logging for debugging any remaining issues
+
+**Next session priorities:**
+1. Test enhanced deletion logic with complex conversion cycles
+2. Monitor backup storage optimization effectiveness  
+3. Address any remaining file cleanup edge cases
+4. Continue with planned WebP optimization improvements

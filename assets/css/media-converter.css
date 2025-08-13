@@ -1,0 +1,355 @@
+/**
+ * Media Library Converter Styles
+ * Styling for inline format conversion buttons and progress indicators
+ */
+
+/* Conversion Button Container */
+.pic-pilot-conversion-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* Conversion Buttons */
+.pic-pilot-convert-btn,
+.pic-pilot-restore-btn,
+.pic-pilot-compress-btn {
+    background: #0073aa;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
+}
+
+.pic-pilot-convert-btn:hover,
+.pic-pilot-restore-btn:hover,
+.pic-pilot-compress-btn:hover {
+    background: #005a87;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.pic-pilot-convert-btn:active,
+.pic-pilot-restore-btn:active,
+.pic-pilot-compress-btn:active {
+    transform: translateY(0);
+}
+
+.pic-pilot-convert-btn:disabled,
+.pic-pilot-restore-btn:disabled,
+.pic-pilot-compress-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Specific button types */
+.pic-pilot-restore-btn {
+    background: #dc3232;
+}
+
+.pic-pilot-restore-btn:hover {
+    background: #a02525;
+}
+
+.pic-pilot-compress-btn {
+    background: #00a32a;
+}
+
+.pic-pilot-compress-btn:hover {
+    background: #007f23;
+}
+
+/* Disabled button (when conversion not possible) */
+.pic-pilot-disabled-btn {
+    background: #f0f0f0;
+    color: #666;
+    border: 1px solid #ddd;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 3px;
+    cursor: not-allowed;
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
+}
+
+/* Optimized status indicator */
+.pic-pilot-optimized-status {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 3px;
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
+    font-weight: 500;
+}
+
+/* Progress Indicators */
+.pic-pilot-conversion-progress {
+    margin-top: 8px;
+    min-height: 20px;
+}
+
+.pic-pilot-progress-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.pic-pilot-progress-text {
+    font-size: 12px;
+    color: #666;
+}
+
+.pic-pilot-progress-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: pic-pilot-spin 1s linear infinite;
+}
+
+@keyframes pic-pilot-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Success and Error Messages */
+.pic-pilot-success {
+    padding: 8px;
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.pic-pilot-error {
+    padding: 8px;
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+/* Media Library Column */
+.pic-pilot-media-column .pic-pilot-conversion-buttons {
+    justify-content: center;
+}
+
+.pic-pilot-media-column .pic-pilot-convert-btn,
+.pic-pilot-media-column .pic-pilot-restore-btn,
+.pic-pilot-media-column .pic-pilot-compress-btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    min-width: 50px;
+}
+
+/* Batch Processing Modal */
+.pic-pilot-batch-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pic-pilot-batch-modal {
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    min-width: 400px;
+    max-width: 500px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.pic-pilot-batch-header h3 {
+    margin: 0 0 16px 0;
+    color: #333;
+    text-align: center;
+}
+
+.pic-pilot-batch-progress {
+    margin-bottom: 16px;
+}
+
+.pic-pilot-batch-bar {
+    width: 100%;
+    height: 20px;
+    background: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.pic-pilot-batch-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0073aa, #005a87);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 10px;
+}
+
+.pic-pilot-batch-text {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .pic-pilot-conversion-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .pic-pilot-convert-btn,
+    .pic-pilot-restore-btn,
+    .pic-pilot-compress-btn,
+    .pic-pilot-disabled-btn {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 4px;
+    }
+    
+    .pic-pilot-batch-modal {
+        margin: 16px;
+        min-width: auto;
+        width: calc(100% - 32px);
+    }
+}
+
+/* WordPress Media Library Grid View */
+.attachments-browser .pic-pilot-conversion-buttons {
+    margin-top: 4px;
+}
+
+.attachments-browser .pic-pilot-convert-btn,
+.attachments-browser .pic-pilot-restore-btn,
+.attachments-browser .pic-pilot-compress-btn {
+    font-size: 10px;
+    padding: 3px 6px;
+    min-width: 40px;
+}
+
+/* Attachment Details Sidebar */
+.attachment-details .pic-pilot-conversion-buttons {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+}
+
+.attachment-details .pic-pilot-conversion-buttons .button {
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+
+/* Table View Column */
+.wp-list-table .pic-pilot-formats {
+    width: 140px;
+}
+
+.wp-list-table .pic-pilot-media-column {
+    white-space: nowrap;
+}
+
+/* Bulk Action Enhancements */
+.tablenav .actions select optgroup {
+    font-weight: bold;
+    font-style: italic;
+}
+
+/* Animation for button state changes */
+.pic-pilot-convert-btn.processing {
+    animation: pic-pilot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pic-pilot-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Tooltips for disabled buttons */
+.pic-pilot-disabled-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    background: #333;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-top: 24px;
+    margin-left: -50px;
+}
+
+/* Format indicators */
+.pic-pilot-format-indicator {
+    display: inline-block;
+    background: #f0f0f0;
+    color: #666;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: bold;
+    margin-left: 4px;
+    text-transform: uppercase;
+}
+
+.pic-pilot-format-indicator.jpeg {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.pic-pilot-format-indicator.png {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.pic-pilot-format-indicator.webp {
+    background: #e8f5e8;
+    color: #388e3c;
+}
+
+/* Backup status indicators */
+.pic-pilot-backup-status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 4px;
+}
+
+.pic-pilot-backup-status.has-backup {
+    background: #4caf50;
+    title: "Backup available";
+}
+
+.pic-pilot-backup-status.no-backup {
+    background: #ff9800;
+    title: "No backup available";
+}
