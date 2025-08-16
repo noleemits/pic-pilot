@@ -356,6 +356,22 @@ class Utils {
     ): void {
         $timestamp = time();
         
+        // Check if this is a format conversion or optimization operation
+        $is_format_conversion = strpos($engine, 'Format Conversion') !== false;
+        
+        // For non-conversion operations (optimizations), preserve existing conversion savings
+        if (!$is_format_conversion) {
+            $existing_saved = (int) get_post_meta($attachment_id, '_pic_pilot_bytes_saved', true);
+            $existing_engine = get_post_meta($attachment_id, '_pic_pilot_engine', true);
+            
+            // If there was a previous format conversion, preserve those savings
+            if ($existing_saved > 0 && strpos($existing_engine, 'Format Conversion') !== false) {
+                $total_saved += $existing_saved;
+                $engine = $existing_engine . ' + ' . $engine;
+                Logger::log("📊 Preserving existing format conversion savings: {$existing_saved} bytes, new total: {$total_saved} bytes");
+            }
+        }
+        
         // Check for PNG conversion savings and add them to total
         $png_conversion_savings = (int) get_post_meta($attachment_id, '_pic_pilot_png_conversion_savings', true);
         if ($png_conversion_savings > 0) {

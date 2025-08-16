@@ -39,6 +39,7 @@ class Settings {
         
         // Advanced settings
         'strip_metadata'        => false,
+        'enable_format_conversion_backups' => false,
         
         // Legacy settings (keep for compatibility)
         'enable_jpeg'           => false,

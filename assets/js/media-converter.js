@@ -60,9 +60,21 @@
             const attachmentId = $button.data('attachment-id');
             const conversionType = $button.data('conversion-type');
             const nonce = $button.data('nonce');
+            const hasBackups = $button.data('has-backups') === 'true';
             
-            if (!confirm(picPilotConverter.strings.confirm)) {
-                return;
+            // Show appropriate confirmation based on backup status
+            if (!picPilotConverter.backupEnabled) {
+                if (!hasBackups) {
+                    // No backups exist and backup creation is disabled
+                    if (!confirm(picPilotConverter.strings.confirmNoBackup)) {
+                        return;
+                    }
+                } else {
+                    // Backups exist but new ones won't be created
+                    if (!confirm(picPilotConverter.strings.confirmNoNewBackups)) {
+                        return;
+                    }
+                }
             }
             
             this.showProgress(attachmentId, 'Converting...');
@@ -102,6 +114,7 @@
             const attachmentId = $button.data('attachment-id');
             const nonce = $button.data('nonce');
             
+            // Restore always shows confirmation since it's irreversible
             if (!confirm(picPilotConverter.strings.confirmRestore)) {
                 return;
             }
@@ -163,7 +176,7 @@
             
             const selectedIds = this.getSelectedAttachmentIds();
             if (selectedIds.length === 0) {
-                alert('Please select images to convert');
+                console.log('Please select images to convert');
                 return;
             }
             
@@ -189,11 +202,11 @@
                         this.showBatchResults(response.data);
                         location.reload(); // Refresh to show new formats
                     } else {
-                        alert('Batch conversion failed: ' + response.data.message);
+                        console.log('Batch conversion failed: ' + response.data.message);
                     }
                 },
                 error: () => {
-                    alert('Batch conversion failed');
+                    console.log('Batch conversion failed');
                 },
                 complete: () => {
                     this.hideBatchProgress();
@@ -212,7 +225,7 @@
             
             const selectedIds = this.getSelectedAttachmentIds();
             if (selectedIds.length === 0) {
-                alert('Please select images to process');
+                console.log('Please select images to process');
                 return;
             }
             
@@ -267,7 +280,7 @@
                         setTimeout(() => processBatch(startIndex + batchSize), 500);
                     },
                     error: () => {
-                        alert('Batch processing failed');
+                        console.log('Batch processing failed');
                         this.hideBatchProgress();
                     }
                 });

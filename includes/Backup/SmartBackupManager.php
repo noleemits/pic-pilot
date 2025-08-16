@@ -84,10 +84,44 @@ class SmartBackupManager {
         }
 
         $backup_type = self::get_backup_type($operation_type);
+        
+        // For conversion backups, check if one already exists to preserve original format
+        if ($backup_type === self::BACKUP_CONVERSION) {
+            $existing_backup = self::get_backup_info($attachment_id);
+            if (!empty($existing_backup['conversion'])) {
+                Logger::log("📦 Conversion backup already exists for ID $attachment_id - preserving original format");
+                // Update the conversion chain metadata instead of creating new backup
+                self::update_conversion_chain($attachment_id, $operation_type);
+                return true;
+            }
+        }
+        
         Logger::log("📦 Creating $backup_type backup for operation: $operation_type");
 
         // Create backup with type-specific settings
         return self::create_typed_backup($attachment_id, $backup_type);
+    }
+
+    /**
+     * Update conversion chain metadata without creating new backup
+     */
+    private static function update_conversion_chain(int $attachment_id, string $operation_type): void {
+        // Get current metadata
+        $conversion_chain = get_post_meta($attachment_id, '_pic_pilot_conversion_chain', true);
+        if (!is_array($conversion_chain)) {
+            $conversion_chain = [];
+        }
+        
+        // Add this conversion to the chain
+        $conversion_chain[] = [
+            'operation' => $operation_type,
+            'timestamp' => time(),
+            'current_format' => get_post_mime_type($attachment_id)
+        ];
+        
+        // Update metadata
+        update_post_meta($attachment_id, '_pic_pilot_conversion_chain', $conversion_chain);
+        Logger::log("📝 Updated conversion chain for ID $attachment_id: $operation_type");
     }
 
     /**

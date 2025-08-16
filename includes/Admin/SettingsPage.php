@@ -510,6 +510,18 @@ class SettingsPage {
                 'description' => __('Removes EXIF/IPTC data from images to reduce file size. ⚠️ If you use alt text plugins that depend on metadata, this may reduce accuracy.', 'pic-pilot')
             ]
         );
+
+        add_settings_field(
+            'enable_format_conversion_backups',
+            __('Enable Format Conversion Backups', 'pic-pilot'),
+            [FormHelper::class, 'render_checkbox'],
+            'pic-pilot',
+            'pic_pilot_advanced',
+            [
+                'label_for' => 'enable_format_conversion_backups',
+                'description' => __('Creates automatic backups when converting between formats (PNG↔JPEG↔WebP), allowing you to restore to original formats. <strong>DISK SPACE WARNING:</strong> This uses additional storage space. When disabled, format conversions cannot be undone.', 'pic-pilot')
+            ]
+        );
     }
 
     public static function render_resize_width_input($args) {
@@ -633,6 +645,7 @@ class SettingsPage {
             
             // Advanced settings
             'strip_metadata',
+            'enable_format_conversion_backups',
             
             // Legacy settings (for compatibility)
             'enable_jpeg',

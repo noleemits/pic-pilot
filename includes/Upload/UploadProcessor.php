@@ -16,9 +16,14 @@ defined('ABSPATH') || exit;
 class UploadProcessor {
     
     public static function process_upload(array $metadata, int $attachment_id): array {
-        global $pic_pilot_restoring;
+        global $pic_pilot_restoring, $pic_pilot_inline_converting;
         if (!empty($pic_pilot_restoring)) {
             Logger::log("🛑 Skipping upload processing during restore for ID $attachment_id");
+            return $metadata;
+        }
+        
+        if (!empty($pic_pilot_inline_converting)) {
+            Logger::log("🛑 Skipping upload processing during inline conversion for ID $attachment_id");
             return $metadata;
         }
 

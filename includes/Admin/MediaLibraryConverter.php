@@ -9,6 +9,7 @@ use PicPilot\PngToJpegConverter;
 use PicPilot\Backup\SmartBackupManager;
 use PicPilot\Backup\RestoreManager;
 use PicPilot\Utils;
+use PicPilot\Optimizer;
 
 defined('ABSPATH') || exit;
 
@@ -72,6 +73,9 @@ class MediaLibraryConverter {
         $backup_info = SmartBackupManager::get_backup_info($attachment_id);
         $has_backups = !empty($backup_info);
         
+        // Check if format conversion backups are enabled
+        $enable_backups = Settings::get('enable_format_conversion_backups', false);
+        
         // Format conversion buttons
         switch ($mime_type) {
             case 'image/jpeg':
@@ -119,6 +123,18 @@ class MediaLibraryConverter {
         }
         
         $button_html = '<div class="pic-pilot-conversion-buttons">' . implode(' ', $buttons) . '</div>';
+        
+        // Add warning if no backups exist and backup creation is disabled
+        if (!$has_backups && !$enable_backups) {
+            $button_html .= '<div class="pic-pilot-backup-warning" style="margin-top: 5px; padding: 5px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 3px; font-size: 12px; color: #856404;">';
+            $button_html .= '⚠️ ' . __('No backups available and backup creation disabled: Format conversions cannot be undone', 'pic-pilot');
+            $button_html .= '</div>';
+        } elseif (!$enable_backups && $has_backups) {
+            $button_html .= '<div class="pic-pilot-backup-warning" style="margin-top: 5px; padding: 5px; background: #e7f3ff; border: 1px solid #b3d7ff; border-radius: 3px; font-size: 12px; color: #004085;">';
+            $button_html .= 'ℹ️ ' . __('Backup creation disabled: New conversions will not be backed up (existing backups available)', 'pic-pilot');
+            $button_html .= '</div>';
+        }
+        
         $button_html .= '<div class="pic-pilot-conversion-progress" id="pic-pilot-progress-' . $attachment_id . '" style="display:none;"></div>';
         
         return $button_html;
@@ -160,15 +176,21 @@ class MediaLibraryConverter {
     private static function create_conversion_button(int $attachment_id, string $conversion_type, string $label, string $title): string {
         $nonce = wp_create_nonce('pic_pilot_convert_' . $attachment_id);
         
+        // Check backup availability for this specific attachment
+        $backup_info = SmartBackupManager::get_backup_info($attachment_id);
+        $has_backups = !empty($backup_info);
+        
         return sprintf(
             '<button type="button" class="button pic-pilot-convert-btn" 
                      data-attachment-id="%d" 
                      data-conversion-type="%s" 
                      data-nonce="%s" 
+                     data-has-backups="%s"
                      title="%s">%s</button>',
             $attachment_id,
             esc_attr($conversion_type),
             $nonce,
+            $has_backups ? 'true' : 'false',
             esc_attr($title),
             esc_html($label)
         );
@@ -242,12 +264,15 @@ class MediaLibraryConverter {
         wp_localize_script('pic-pilot-media-converter', 'picPilotConverter', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('pic_pilot_media_converter'),
+            'backupEnabled' => Settings::get('enable_format_conversion_backups', false),
             'strings' => [
                 'converting' => __('Converting...', 'pic-pilot'),
                 'success' => __('Conversion completed!', 'pic-pilot'),
                 'error' => __('Conversion failed', 'pic-pilot'),
                 'confirm' => __('Are you sure you want to convert this image?', 'pic-pilot'),
                 'confirmRestore' => __('Are you sure you want to restore this image?', 'pic-pilot'),
+                'confirmNoBackup' => __('⚠️ WARNING: No backups available and backup creation disabled! This conversion cannot be undone. Are you sure you want to proceed?', 'pic-pilot'),
+                'confirmNoNewBackups' => __('⚠️ WARNING: New conversions will not be backed up (existing backups available). Continue?', 'pic-pilot'),
             ]
         ]);
         
@@ -278,6 +303,10 @@ class MediaLibraryConverter {
         
         Logger::log("🔄 Starting inline conversion: $conversion_type for ID $attachment_id");
         
+        // Set flag to prevent upload processor from interfering
+        global $pic_pilot_inline_converting;
+        $pic_pilot_inline_converting = true;
+        
         try {
             $result = self::perform_conversion($attachment_id, $conversion_type);
             
@@ -289,6 +318,9 @@ class MediaLibraryConverter {
         } catch (\Exception $e) {
             Logger::log("❌ Conversion exception: " . $e->getMessage());
             wp_send_json_error(['message' => $e->getMessage()]);
+        } finally {
+            // Clear flag
+            $pic_pilot_inline_converting = false;
         }
     }
     
@@ -305,18 +337,24 @@ class MediaLibraryConverter {
         $original_size = filesize($file_path);
         $original_mime = get_post_mime_type($attachment_id);
         
-        // Create backup before conversion
-        $operation_map = [
-            'jpeg_to_png' => 'convert_jpeg_to_png',
-            'jpeg_to_webp' => 'convert_to_webp',
-            'png_to_jpeg' => 'convert_png_to_jpeg', 
-            'png_to_webp' => 'convert_to_webp',
-            'webp_to_jpeg' => 'convert_webp_to_jpeg',
-            'webp_to_png' => 'convert_webp_to_png'
-        ];
-        
-        $operation_type = $operation_map[$conversion_type] ?? 'optimize_image';
-        SmartBackupManager::create_smart_backup($attachment_id, $operation_type);
+        // Create backup before conversion (if enabled)
+        $enable_backups = Settings::get('enable_format_conversion_backups', false);
+        if ($enable_backups) {
+            $operation_map = [
+                'jpeg_to_png' => 'convert_jpeg_to_png',
+                'jpeg_to_webp' => 'convert_to_webp',
+                'png_to_jpeg' => 'convert_png_to_jpeg', 
+                'png_to_webp' => 'convert_to_webp',
+                'webp_to_jpeg' => 'convert_webp_to_jpeg',
+                'webp_to_png' => 'convert_webp_to_png'
+            ];
+            
+            $operation_type = $operation_map[$conversion_type] ?? 'optimize_image';
+            SmartBackupManager::create_smart_backup($attachment_id, $operation_type);
+            Logger::log("📁 Created backup for inline conversion: $operation_type");
+        } else {
+            Logger::log("⚠️ Backup creation disabled for format conversion - no backup created");
+        }
         
         switch ($conversion_type) {
             case 'jpeg_to_png':
@@ -372,7 +410,7 @@ class MediaLibraryConverter {
         
         Logger::log("✅ JPEG→PNG conversion completed for ID $attachment_id");
         
-        return [
+        $result = [
             'success' => true,
             'message' => __('Successfully converted to PNG', 'pic-pilot'),
             'new_format' => 'PNG',
@@ -380,6 +418,22 @@ class MediaLibraryConverter {
             'new_size' => $new_size,
             'saved' => $saved
         ];
+        
+        // Store conversion metadata for proper savings tracking
+        if ($result['success'] && $saved > 0) {
+            Utils::update_compression_metadata(
+                $attachment_id,
+                $saved,
+                'Format Conversion (PNG→JPEG)',
+                true,
+                $original_size,
+                $new_size,
+                0
+            );
+        }
+        
+        // Apply optimization after conversion (except for restore operations)
+        return self::apply_post_conversion_optimization($attachment_id, $result);
     }
     
     /**
@@ -406,7 +460,7 @@ class MediaLibraryConverter {
         
         Logger::log("✅ PNG→JPEG conversion completed for ID $attachment_id");
         
-        return [
+        $result = [
             'success' => true,
             'message' => __('Successfully converted to JPEG', 'pic-pilot'),
             'new_format' => 'JPEG',
@@ -414,6 +468,22 @@ class MediaLibraryConverter {
             'new_size' => $new_size,
             'saved' => $saved
         ];
+        
+        // Store conversion metadata for proper savings tracking
+        if ($result['success'] && $saved > 0) {
+            Utils::update_compression_metadata(
+                $attachment_id,
+                $saved,
+                'Format Conversion (PNG→JPEG)',
+                true,
+                $original_size,
+                $new_size,
+                0
+            );
+        }
+        
+        // Apply optimization after conversion
+        return self::apply_post_conversion_optimization($attachment_id, $result);
     }
     
     /**
@@ -440,7 +510,7 @@ class MediaLibraryConverter {
         
         Logger::log("✅ WebP conversion completed for ID $attachment_id");
         
-        return [
+        $result = [
             'success' => true,
             'message' => __('Successfully converted to WebP', 'pic-pilot'),
             'new_format' => 'WebP',
@@ -448,6 +518,23 @@ class MediaLibraryConverter {
             'new_size' => $new_size,
             'saved' => $saved
         ];
+        
+        // Store conversion metadata for proper savings tracking
+        if ($result['success'] && $saved > 0) {
+            $original_format = pathinfo($file_path, PATHINFO_EXTENSION);
+            Utils::update_compression_metadata(
+                $attachment_id,
+                $saved,
+                "Format Conversion ({$original_format}→WebP)",
+                true,
+                $original_size,
+                $new_size,
+                0
+            );
+        }
+        
+        // Apply optimization after conversion
+        return self::apply_post_conversion_optimization($attachment_id, $result);
     }
     
     /**
@@ -481,7 +568,7 @@ class MediaLibraryConverter {
         
         Logger::log("✅ WebP→JPEG conversion completed for ID $attachment_id");
         
-        return [
+        $result = [
             'success' => true,
             'message' => __('Successfully converted to JPEG', 'pic-pilot'),
             'new_format' => 'JPEG',
@@ -489,6 +576,22 @@ class MediaLibraryConverter {
             'new_size' => $new_size,
             'saved' => $saved
         ];
+        
+        // Store conversion metadata for proper savings tracking
+        if ($result['success'] && $saved > 0) {
+            Utils::update_compression_metadata(
+                $attachment_id,
+                $saved,
+                'Format Conversion (WebP→JPEG)',
+                true,
+                $original_size,
+                $new_size,
+                0
+            );
+        }
+        
+        // Apply optimization after conversion (WebP→other format conversions get optimized)
+        return self::apply_post_conversion_optimization($attachment_id, $result);
     }
     
     /**
@@ -522,7 +625,7 @@ class MediaLibraryConverter {
         
         Logger::log("✅ WebP→PNG conversion completed for ID $attachment_id");
         
-        return [
+        $result = [
             'success' => true,
             'message' => __('Successfully converted to PNG', 'pic-pilot'),
             'new_format' => 'PNG',
@@ -530,8 +633,71 @@ class MediaLibraryConverter {
             'new_size' => $new_size,
             'saved' => $saved
         ];
+        
+        // Store conversion metadata for proper savings tracking
+        if ($result['success'] && $saved > 0) {
+            Utils::update_compression_metadata(
+                $attachment_id,
+                $saved,
+                'Format Conversion (WebP→PNG)',
+                true,
+                $original_size,
+                $new_size,
+                0
+            );
+        }
+        
+        // Apply optimization after conversion (WebP→other format conversions get optimized)
+        return self::apply_post_conversion_optimization($attachment_id, $result);
     }
     
+    /**
+     * Apply optimization after format conversion
+     */
+    private static function apply_post_conversion_optimization(int $attachment_id, array $conversion_result): array {
+        // Check if the converted format can be further optimized
+        $current_mime = get_post_mime_type($attachment_id);
+        
+        // Skip optimization for WebP (already optimized during conversion)
+        if ($current_mime === 'image/webp') {
+            Logger::log("⏩ Skipping post-conversion optimization for WebP (already optimized during conversion)");
+            return $conversion_result;
+        }
+        
+        Logger::log("🔧 Applying post-conversion optimization for ID $attachment_id");
+        
+        $optimization_result = Optimizer::optimize_attachment($attachment_id, false); // Skip resize as conversion already handled it
+        
+        if ($optimization_result['success']) {
+            $additional_saved = $optimization_result['saved'] ?? 0;
+            $compression_engine = $optimization_result['engine'] ?? 'Unknown';
+            
+            // Only add compression info if there are actual savings
+            if ($additional_saved > 0) {
+                // Combine savings from conversion and compression
+                $total_saved = ($conversion_result['saved'] ?? 0) + $additional_saved;
+                
+                Logger::log("✅ Post-conversion optimization completed: Additional {$additional_saved} bytes saved via {$compression_engine}");
+                
+                // Update the result to show combined optimization
+                $conversion_result['saved'] = $total_saved;
+                $conversion_result['message'] .= sprintf(
+                    ' + %s via %s', 
+                    __('optimized', 'pic-pilot'),
+                    $compression_engine
+                );
+                $conversion_result['optimization_engine'] = $compression_engine;
+                $conversion_result['optimization_saved'] = $additional_saved;
+            } else {
+                Logger::log("ℹ️ Post-conversion optimization completed but no additional savings achieved");
+            }
+        } else {
+            Logger::log("⚠️ Post-conversion optimization failed: " . ($optimization_result['error'] ?? 'Unknown error'));
+        }
+        
+        return $conversion_result;
+    }
+
     /**
      * Update attachment file and metadata after conversion
      */

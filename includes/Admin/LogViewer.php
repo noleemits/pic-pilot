@@ -94,7 +94,7 @@ document.getElementById('pic-pilot-copy-log').addEventListener('click', function
     // Use the modern clipboard API if available
     if (navigator.clipboard) {
         navigator.clipboard.writeText(logContent).then(function() {
-            alert('✅ Log copied to clipboard!');
+            console.log('✅ Log copied to clipboard!');
         }).catch(function(err) {
             console.error('Failed to copy: ', err);
             fallbackCopyTextToClipboard(logContent);
@@ -118,13 +118,13 @@ function fallbackCopyTextToClipboard(text) {
     try {
         const successful = document.execCommand('copy');
         if (successful) {
-            alert('✅ Log copied to clipboard!');
+            console.log('✅ Log copied to clipboard!');
         } else {
-            alert('❌ Failed to copy log to clipboard');
+            console.log('❌ Failed to copy log to clipboard');
         }
     } catch (err) {
         console.error('Fallback copy failed: ', err);
-        alert('❌ Failed to copy log to clipboard');
+        console.log('❌ Failed to copy log to clipboard');
     }
     
     document.body.removeChild(textArea);
